@@ -5,34 +5,67 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { LeadSource, PlanType, PipelineStage } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 
-// Schema de validação para novo lead
+// ============================================
+// PRECOS FIXOS DOS PLANOS (REGRA DE NEGOCIO)
+// ============================================
+// IMPORTANTE: Estes valores sao a unica fonte de verdade
+// Qualquer alteracao de preco deve ser feita APENAS aqui
+const PLAN_PRICES: Record<PlanType, number> = {
+  INDEFINIDO: 0,
+  PLANO_UNICO: 35.90,
+  PLANO_MENSAL: 45.90,
+};
+
+// Funcao helper para obter o valor do plano
+// O valor e calculado APENAS no backend para evitar manipulacao
+function getPlanValue(plan: PlanType): Decimal {
+  return new Decimal(PLAN_PRICES[plan]);
+}
+
+// Funcao helper para determinar o plano baseado no stage
+// Quando o lead e movido para VENDIDO_*, o plano deve ser consistente
+function getPlanFromStage(stage: PipelineStage): PlanType | null {
+  if (stage === "VENDIDO_UNICO") return "PLANO_UNICO";
+  if (stage === "VENDIDO_MENSAL") return "PLANO_MENSAL";
+  return null;
+}
+
+// ============================================
+// SCHEMAS DE VALIDACAO
+// ============================================
+
 const createLeadSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos"),
+  name: z.string().min(1, "Nome e obrigatorio"),
+  phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos"),
   source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]),
+  plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
 });
 
-// Schema de validação para atualização de lead
 const updateLeadSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().min(1, "Nome é obrigatório").optional(),
-  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").optional(),
+  name: z.string().min(1, "Nome e obrigatorio").optional(),
+  phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos").optional(),
   source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]).optional(),
   plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
   stage: z.enum(["NOVOS", "EM_CONTATO", "VENDIDO_UNICO", "VENDIDO_MENSAL", "PERDIDO"]).optional(),
   notes: z.string().nullable().optional(),
 });
 
-async function getCurrentUser() {
+// ============================================
+// AUTENTICACAO
+// ============================================
+
+export async function getCurrentUser() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Não autorizado");
+    throw new Error("Nao autorizado");
   }
 
-  // Busca ou cria o usuário no Prisma
+  // Busca ou cria o usuario no Prisma
   let dbUser = await prisma.user.findUnique({
     where: { email: user.email! },
   });
@@ -50,6 +83,10 @@ async function getCurrentUser() {
   return dbUser;
 }
 
+// ============================================
+// CRIAR LEAD
+// ============================================
+
 export async function createLead(formData: FormData) {
   try {
     const user = await getCurrentUser();
@@ -58,13 +95,23 @@ export async function createLead(formData: FormData) {
       name: formData.get("name") as string,
       phone: (formData.get("phone") as string).replace(/\D/g, ""),
       source: formData.get("source") as LeadSource,
+      plan: (formData.get("plan") as PlanType) || "INDEFINIDO",
     };
 
     const validatedData = createLeadSchema.parse(rawData);
+    const plan = validatedData.plan || "INDEFINIDO";
+
+    // SEGURANCA: Valor financeiro calculado APENAS no backend
+    // O frontend NAO pode enviar ou manipular este valor
+    const value = getPlanValue(plan);
 
     const lead = await prisma.lead.create({
       data: {
-        ...validatedData,
+        name: validatedData.name,
+        phone: validatedData.phone,
+        source: validatedData.source,
+        plan: plan,
+        value: value,
         userId: user.id,
       },
     });
@@ -78,6 +125,10 @@ export async function createLead(formData: FormData) {
     return { success: false, error: "Erro ao criar lead" };
   }
 }
+
+// ============================================
+// ATUALIZAR LEAD
+// ============================================
 
 export async function updateLead(data: {
   id: string;
@@ -93,7 +144,7 @@ export async function updateLead(data: {
 
     const validatedData = updateLeadSchema.parse(data);
 
-    // Verifica se o lead pertence ao usuário
+    // Verifica se o lead pertence ao usuario
     const existingLead = await prisma.lead.findFirst({
       where: {
         id: validatedData.id,
@@ -103,19 +154,38 @@ export async function updateLead(data: {
     });
 
     if (!existingLead) {
-      return { success: false, error: "Lead não encontrado" };
+      return { success: false, error: "Lead nao encontrado" };
+    }
+
+    // Monta o objeto de atualizacao
+    const updateData: Record<string, unknown> = {
+      ...(validatedData.name && { name: validatedData.name }),
+      ...(validatedData.phone && { phone: validatedData.phone.replace(/\D/g, "") }),
+      ...(validatedData.source && { source: validatedData.source }),
+      ...(validatedData.notes !== undefined && { notes: validatedData.notes }),
+    };
+
+    // LOGICA DE CONSISTENCIA: Se o stage mudar para VENDIDO_*
+    // o plano e valor sao atualizados automaticamente
+    if (validatedData.stage) {
+      updateData.stage = validatedData.stage;
+
+      const forcedPlan = getPlanFromStage(validatedData.stage);
+      if (forcedPlan) {
+        updateData.plan = forcedPlan;
+        updateData.value = getPlanValue(forcedPlan);
+      }
+    }
+
+    // Se o plano for alterado explicitamente (sem mudanca de stage)
+    if (validatedData.plan && !validatedData.stage) {
+      updateData.plan = validatedData.plan;
+      updateData.value = getPlanValue(validatedData.plan);
     }
 
     const lead = await prisma.lead.update({
       where: { id: validatedData.id },
-      data: {
-        ...(validatedData.name && { name: validatedData.name }),
-        ...(validatedData.phone && { phone: validatedData.phone.replace(/\D/g, "") }),
-        ...(validatedData.source && { source: validatedData.source }),
-        ...(validatedData.plan && { plan: validatedData.plan }),
-        ...(validatedData.stage && { stage: validatedData.stage }),
-        ...(validatedData.notes !== undefined && { notes: validatedData.notes }),
-      },
+      data: updateData,
     });
 
     revalidatePath("/");
@@ -128,11 +198,14 @@ export async function updateLead(data: {
   }
 }
 
+// ============================================
+// MOVER LEAD NO KANBAN (Atualizar Stage)
+// ============================================
+
 export async function updateLeadStage(id: string, stage: PipelineStage) {
   try {
     const user = await getCurrentUser();
 
-    // Verifica se o lead pertence ao usuário
     const existingLead = await prisma.lead.findFirst({
       where: {
         id,
@@ -142,12 +215,21 @@ export async function updateLeadStage(id: string, stage: PipelineStage) {
     });
 
     if (!existingLead) {
-      return { success: false, error: "Lead não encontrado" };
+      return { success: false, error: "Lead nao encontrado" };
+    }
+
+    // LOGICA DE CONSISTENCIA ao mover no Kanban
+    const updateData: Record<string, unknown> = { stage };
+
+    const forcedPlan = getPlanFromStage(stage);
+    if (forcedPlan) {
+      updateData.plan = forcedPlan;
+      updateData.value = getPlanValue(forcedPlan);
     }
 
     const lead = await prisma.lead.update({
       where: { id },
-      data: { stage },
+      data: updateData,
     });
 
     revalidatePath("/");
@@ -156,6 +238,42 @@ export async function updateLeadStage(id: string, stage: PipelineStage) {
     return { success: false, error: "Erro ao mover lead" };
   }
 }
+
+// ============================================
+// EXCLUIR LEAD (Soft Delete)
+// ============================================
+
+export async function deleteLead(id: string) {
+  try {
+    const user = await getCurrentUser();
+
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        id,
+        userId: user.id,
+        deletedAt: null,
+      },
+    });
+
+    if (!existingLead) {
+      return { success: false, error: "Lead nao encontrado" };
+    }
+
+    await prisma.lead.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    revalidatePath("/");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao excluir lead" };
+  }
+}
+
+// ============================================
+// LISTAR LEADS
+// ============================================
 
 export async function getLeads() {
   try {
@@ -173,89 +291,6 @@ export async function getLeads() {
 
     return { success: true, data: leads };
   } catch {
-    return { success: false, error: "Erro ao buscar leads", data: [] };
-  }
-}
-
-export async function getMetrics() {
-  try {
-    const user = await getCurrentUser();
-
-    // Início do mês atual
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const [leadsNaEsteira, vendasUnicas, vendasMensais] = await Promise.all([
-      // Leads na esteira (não vendidos e não perdidos)
-      prisma.lead.count({
-        where: {
-          userId: user.id,
-          deletedAt: null,
-          stage: {
-            in: ["NOVOS", "EM_CONTATO"],
-          },
-        },
-      }),
-      // Vendas únicas no mês
-      prisma.lead.count({
-        where: {
-          userId: user.id,
-          deletedAt: null,
-          stage: "VENDIDO_UNICO",
-          updatedAt: {
-            gte: startOfMonth,
-          },
-        },
-      }),
-      // Vendas mensais no mês
-      prisma.lead.count({
-        where: {
-          userId: user.id,
-          deletedAt: null,
-          stage: "VENDIDO_MENSAL",
-          updatedAt: {
-            gte: startOfMonth,
-          },
-        },
-      }),
-    ]);
-
-    return {
-      success: true,
-      data: {
-        leadsNaEsteira,
-        vendasUnicas,
-        vendasMensais,
-      },
-    };
-  } catch {
-    return {
-      success: false,
-      error: "Erro ao buscar métricas",
-      data: { leadsNaEsteira: 0, vendasUnicas: 0, vendasMensais: 0 },
-    };
-  }
-}
-
-export async function deleteLead(id: string) {
-  try {
-    const user = await getCurrentUser();
-
-    // Soft delete
-    await prisma.lead.update({
-      where: {
-        id,
-        userId: user.id,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-
-    revalidatePath("/");
-    return { success: true };
-  } catch {
-    return { success: false, error: "Erro ao excluir lead" };
+    return { success: false, error: "Erro ao buscar leads" };
   }
 }
