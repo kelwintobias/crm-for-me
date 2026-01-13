@@ -11,10 +11,12 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
-import type { User } from "@supabase/supabase-js";
 
 interface UserMenuProps {
-  user: User;
+  user: {
+    name: string | null;
+    email: string;
+  };
 }
 
 export function UserMenu({ user }: UserMenuProps) {
@@ -35,7 +37,7 @@ export function UserMenu({ user }: UserMenuProps) {
           </Avatar>
           <div className="text-left hidden sm:block">
             <p className="text-sm font-medium text-text-primary">
-              {user.user_metadata?.full_name || user.email?.split("@")[0]}
+              {user.name || user.email.split("@")[0]}
             </p>
             <p className="text-xs text-text-secondary truncate max-w-[150px]">
               {user.email}
