@@ -1,27 +1,38 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getLeads, getMetrics } from "./actions/leads";
+import { getLeads, getCurrentUser } from "./actions/leads";
+import { getDashboardMetrics } from "./actions/dashboard";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
+  // Obtem o usuario autenticado do Prisma
+  let user;
+  try {
+    user = await getCurrentUser();
+  } catch {
     redirect("/login");
   }
 
-  const [leadsResult, metricsResult] = await Promise.all([
+  // Busca paralela de dados para performance
+  const [leadsResult, dashboardResult] = await Promise.all([
     getLeads(),
-    getMetrics(),
+    getDashboardMetrics(),
   ]);
 
   const leads = leadsResult.data || [];
-  const metrics = metricsResult.data || {
-    leadsNaEsteira: 0,
-    vendasUnicas: 0,
-    vendasMensais: 0,
+
+  // Dados padrao caso a query falhe
+  const dashboardData = dashboardResult.data || {
+    kpis: {
+      totalRevenue: 0,
+      mrr: 0,
+      pipeline: 0,
+      averageTicket: 0,
+    },
+    charts: {
+      distribution: [],
+      revenueEvolution: [],
+    },
   };
 
-  return <DashboardView user={user} leads={leads} metrics={metrics} />;
+  return <DashboardView user={user} leads={leads} dashboardData={dashboardData} />;
 }

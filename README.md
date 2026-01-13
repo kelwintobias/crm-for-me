@@ -127,6 +127,7 @@ src/
 ## Segurança 🔒
 
 - **NÃO** comite o arquivo `.env` com chaves reais. Use variáveis de ambiente locais e **GitHub Secrets** para CI.  
+- Este repositório foi tornado **público** por solicitação e **não contém chaves sensíveis** no repositório. Se você adicionar chaves no `.env`, **NÃO** as commite — utilize GitHub Secrets.  
 - Configure segredos em: _Repository → Settings → Secrets and variables → Actions_.  
 - Caso alguma chave vaze, revogue/roteie a chave imediatamente.
 

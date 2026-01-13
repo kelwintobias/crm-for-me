@@ -1,4 +1,4 @@
-// Configurações do Gerador e Fonte de Dados
+// Configuracoes do Gerador e Fonte de Dados
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,10 +9,9 @@ datasource db {
 }
 
 // --------------------------------------
-// ENUMS (Padronização solicitada no PRD)
+// ENUMS
 // --------------------------------------
 
-// Origem do Lead (Dropdown fixo)
 enum LeadSource {
   INSTAGRAM
   GOOGLE
@@ -20,14 +19,12 @@ enum LeadSource {
   OUTRO
 }
 
-// Planos Simplificados (Substitui o campo numérico R$)
 enum PlanType {
   INDEFINIDO
   PLANO_UNICO
   PLANO_MENSAL
 }
 
-// Colunas do Kanban (Status do Pipeline)
 enum PipelineStage {
   NOVOS
   EM_CONTATO
@@ -36,66 +33,56 @@ enum PipelineStage {
   PERDIDO
 }
 
-// Roles de Usuário (Para controle de reset de senha pelo Admin)
 enum UserRole {
   ADMIN
   VENDEDOR
 }
 
 // --------------------------------------
-// MODELS (Tabelas)
+// MODELS
 // --------------------------------------
 
-/// Modelo de Usuário
-/// Representa os Vendedores e Admins.
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  role      UserRole @default(VENDEDOR)
+  id             String   @id @default(uuid())
+  email          String   @unique
+  name           String?
+  role           UserRole @default(VENDEDOR)
 
-  // Relacionamentos
+  // Taxa de comissao do vendedor (ex: 10.00 = 10%)
+  commissionRate Decimal  @default(0) @db.Decimal(5, 2)
+
   leads     Lead[]   @relation("UserLeads")
 
-  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
 }
 
-/// Modelo de Lead (Entidade Principal)
-/// Contém os dados do cliente e o estado no Kanban.
 model Lead {
   id        String   @id @default(uuid())
 
-  // Dados Básicos (Cadastro Simplificado)
   name      String
   phone     String
-
-  // Classificações (Enums para evitar dados sujos)
   source    LeadSource    @default(INSTAGRAM)
   plan      PlanType      @default(INDEFINIDO)
 
-  // Gestão do Pipeline (Kanban)
-  stage     PipelineStage @default(NOVOS)
+  // Valor financeiro calculado automaticamente no backend
+  // Plano Unico: R$ 35,90 | Plano Mensal: R$ 45,90 | Indefinido: R$ 0,00
+  value     Decimal       @default(0) @db.Decimal(10, 2)
 
-  // Campos de Texto Livre (Specs do PC ou observações)
+  stage     PipelineStage @default(NOVOS)
   notes     String?  @db.Text
 
-  // Relacionamento com o Vendedor (Quem é o dono do lead)
   userId    String
   user      User     @relation("UserLeads", fields: [userId], references: [id])
 
-  // Timestamps & Soft Delete
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  // Índices para performance nas queries do Dashboard
   @@index([stage])
   @@index([userId])
-  @@index([updatedAt])
-
+  @@index([createdAt])
   @@map("leads")
 }

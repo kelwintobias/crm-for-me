@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { createLead } from "@/app/actions/leads";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus, Sparkles } from "lucide-react";
 import type { LeadSource } from "@prisma/client";
 
 interface NewLeadModalProps {
@@ -45,10 +45,11 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
     setLoading(false);
 
     if (result.success) {
-      toast.success("Lead criado com sucesso!");
+      toast.success("Lead criado com sucesso!", {
+        description: "O lead foi adicionado ao pipeline.",
+      });
       onOpenChange(false);
       onSuccess();
-      // Reset form
       (e.target as HTMLFormElement).reset();
       setSource("INSTAGRAM");
     } else {
@@ -58,28 +59,48 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Novo Lead</DialogTitle>
-          <DialogDescription>
-            Adicione um novo lead ao seu pipeline de vendas.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-md glass-strong border-white/[0.08] shadow-2xl">
+        {/* Decorative gradient */}
+        <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-brand-accent/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />
+        </div>
+
+        <DialogHeader className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-brand-accent" />
+            </div>
+            <div>
+              <DialogTitle className="font-display text-xl">Novo Lead</DialogTitle>
+              <DialogDescription className="text-text-secondary">
+                Adicione um novo lead ao pipeline
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="relative space-y-5 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome *</Label>
+            <Label htmlFor="name" className="text-sm font-medium text-text-secondary flex items-center gap-2">
+              Nome
+              <span className="text-brand-accent">*</span>
+            </Label>
             <Input
               id="name"
               name="name"
               placeholder="Nome do cliente"
               required
               disabled={loading}
+              className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow transition-all"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefone *</Label>
+            <Label htmlFor="phone" className="text-sm font-medium text-text-secondary flex items-center gap-2">
+              Telefone
+              <span className="text-brand-accent">*</span>
+            </Label>
             <Input
               id="phone"
               name="phone"
@@ -89,44 +110,76 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
               disabled={loading}
               pattern="[0-9]*"
               inputMode="numeric"
+              className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow font-mono transition-all"
             />
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-text-tertiary">
               Apenas números (DDD + número)
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="source">Origem *</Label>
+            <Label htmlFor="source" className="text-sm font-medium text-text-secondary flex items-center gap-2">
+              Origem
+              <span className="text-brand-accent">*</span>
+            </Label>
             <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
                 <SelectValue placeholder="Selecione a origem" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                <SelectItem value="GOOGLE">Google</SelectItem>
-                <SelectItem value="INDICACAO">Indicação</SelectItem>
-                <SelectItem value="OUTRO">Outro</SelectItem>
+              <SelectContent className="glass-strong border-white/10">
+                <SelectItem value="INSTAGRAM" className="focus:bg-brand-accent/20">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+                    Instagram
+                  </span>
+                </SelectItem>
+                <SelectItem value="GOOGLE" className="focus:bg-brand-accent/20">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    Google
+                  </span>
+                </SelectItem>
+                <SelectItem value="INDICACAO" className="focus:bg-brand-accent/20">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Indicação
+                  </span>
+                </SelectItem>
+                <SelectItem value="OUTRO" className="focus:bg-brand-accent/20">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-gray-500" />
+                    Outro
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => onOpenChange(false)}
               disabled={loading}
+              className="hover:bg-white/[0.05]"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-text-dark font-semibold shadow-glow hover:shadow-glow-lg transition-all duration-300 group gap-2"
+            >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Salvando...
                 </>
               ) : (
-                "Salvar Lead"
+                <>
+                  <Sparkles className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                  Criar Lead
+                </>
               )}
             </Button>
           </div>

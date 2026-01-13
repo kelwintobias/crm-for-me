@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { updateLead, deleteLead } from "@/app/actions/leads";
 import { toast } from "sonner";
-import { Loader2, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Trash2, ExternalLink, Edit3, Save, MessageCircle } from "lucide-react";
 import type { Lead, LeadSource, PlanType } from "@prisma/client";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
 
@@ -74,7 +74,9 @@ export function EditLeadModal({
     setLoading(false);
 
     if (result.success && result.data) {
-      toast.success("Lead atualizado com sucesso!");
+      toast.success("Lead atualizado!", {
+        description: "As alterações foram salvas.",
+      });
       onUpdate(result.data);
     } else {
       toast.error(result.error || "Erro ao atualizar lead");
@@ -84,7 +86,7 @@ export function EditLeadModal({
   const handleDelete = async () => {
     if (!lead) return;
 
-    if (!confirm("Tem certeza que deseja excluir este lead?")) return;
+    if (!confirm("Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita.")) return;
 
     setDeleting(true);
 
@@ -93,7 +95,9 @@ export function EditLeadModal({
     setDeleting(false);
 
     if (result.success) {
-      toast.success("Lead excluído com sucesso!");
+      toast.success("Lead excluído", {
+        description: "O lead foi removido do pipeline.",
+      });
       onOpenChange(false);
       window.location.reload();
     } else {
@@ -105,29 +109,57 @@ export function EditLeadModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar Lead</DialogTitle>
-          <DialogDescription>
-            Atualize as informações do lead e selecione o plano de interesse.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-lg glass-strong border-white/[0.08] shadow-2xl">
+        {/* Decorative gradients */}
+        <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-40 h-40 bg-brand-accent/10 rounded-full blur-3xl" />
+        </div>
+
+        <DialogHeader className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <Edit3 className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="font-display text-xl">Editar Lead</DialogTitle>
+              <DialogDescription className="text-text-secondary">
+                Atualize as informações do lead
+              </DialogDescription>
+            </div>
+            {/* Quick WhatsApp */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => window.open(getWhatsAppLink(phone), "_blank")}
+              className="text-brand-accent hover:bg-brand-accent/10"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="relative space-y-5 mt-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome</Label>
+              <Label htmlFor="edit-name" className="text-sm font-medium text-text-secondary">
+                Nome
+              </Label>
               <Input
                 id="edit-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 disabled={loading}
+                className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow transition-all"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-phone">Telefone</Label>
+              <Label htmlFor="edit-phone" className="text-sm font-medium text-text-secondary">
+                Telefone
+              </Label>
               <div className="flex gap-2">
                 <Input
                   id="edit-phone"
@@ -135,7 +167,7 @@ export function EditLeadModal({
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                   required
                   disabled={loading}
-                  className="flex-1"
+                  className="h-11 flex-1 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow font-mono transition-all"
                 />
                 <Button
                   type="button"
@@ -143,11 +175,12 @@ export function EditLeadModal({
                   size="icon"
                   onClick={() => window.open(getWhatsAppLink(phone), "_blank")}
                   title="Abrir WhatsApp"
+                  className="h-11 w-11 border-white/10 hover:border-brand-accent/50 hover:bg-brand-accent/10"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-text-secondary">
+              <p className="text-xs text-text-tertiary font-mono">
                 {formatPhone(phone)}
               </p>
             </div>
@@ -155,37 +188,78 @@ export function EditLeadModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-source">Origem</Label>
+              <Label htmlFor="edit-source" className="text-sm font-medium text-text-secondary">
+                Origem
+              </Label>
               <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                  <SelectItem value="GOOGLE">Google</SelectItem>
-                  <SelectItem value="INDICACAO">Indicação</SelectItem>
-                  <SelectItem value="OUTRO">Outro</SelectItem>
+                <SelectContent className="glass-strong border-white/10">
+                  <SelectItem value="INSTAGRAM" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+                      Instagram
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="GOOGLE" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      Google
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="INDICACAO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Indicação
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="OUTRO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-500" />
+                      Outro
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-plan">Interesse/Plano</Label>
+              <Label htmlFor="edit-plan" className="text-sm font-medium text-text-secondary">
+                Interesse/Plano
+              </Label>
               <Select value={plan} onValueChange={(v) => setPlan(v as PlanType)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="INDEFINIDO">Indefinido</SelectItem>
-                  <SelectItem value="PLANO_UNICO">Plano Único</SelectItem>
-                  <SelectItem value="PLANO_MENSAL">Plano Mensal</SelectItem>
+                <SelectContent className="glass-strong border-white/10">
+                  <SelectItem value="INDEFINIDO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-500" />
+                      Indefinido
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="PLANO_UNICO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Plano Único
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="PLANO_MENSAL" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-brand-accent" />
+                      Plano Mensal
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-notes">Notas</Label>
+            <Label htmlFor="edit-notes" className="text-sm font-medium text-text-secondary">
+              Notas
+            </Label>
             <Textarea
               id="edit-notes"
               value={notes}
@@ -193,41 +267,51 @@ export function EditLeadModal({
               placeholder="Specs do PC, observações, etc..."
               rows={4}
               disabled={loading}
+              className="bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow resize-none transition-all"
             />
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-4 border-t border-white/[0.06]">
             <Button
               type="button"
-              variant="destructive"
+              variant="ghost"
               onClick={handleDelete}
               disabled={loading || deleting}
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-2"
             >
               {deleting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Trash2 className="h-4 w-4" />
               )}
-              <span className="ml-2">Excluir</span>
+              Excluir
             </Button>
 
             <div className="flex gap-3">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={loading}
+                className="hover:bg-white/[0.05]"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-brand-accent hover:bg-brand-accent/90 text-text-dark font-semibold shadow-glow hover:shadow-glow-lg transition-all duration-300 gap-2"
+              >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Salvando...
                   </>
                 ) : (
-                  "Salvar"
+                  <>
+                    <Save className="h-4 w-4" />
+                    Salvar
+                  </>
                 )}
               </Button>
             </div>
