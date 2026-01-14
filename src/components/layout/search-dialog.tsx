@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Input } from "@/components/ui/input";
 import { Search, User, Phone, X, Loader2 } from "lucide-react";
 import { PlainLead, SOURCE_LABELS, STAGE_LABELS } from "@/types";
@@ -129,6 +131,9 @@ export function SearchDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl p-0 gap-0 bg-brand-card border-white/[0.08] overflow-hidden">
+        <VisuallyHidden>
+          <DialogTitle>Buscar leads</DialogTitle>
+        </VisuallyHidden>
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 border-b border-white/[0.08]">
           <Search className="w-5 h-5 text-muted-foreground shrink-0" />
