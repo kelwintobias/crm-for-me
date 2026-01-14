@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { PipelineStage } from "@prisma/client";
@@ -71,15 +71,17 @@ export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadCli
 
   const config = COLUMN_CONFIG[stage];
 
+  // Memoiza o array de IDs para o SortableContext
+  const leadIds = useMemo(() => leads.map((l) => l.id), [leads]);
+
   return (
     <div
       className={cn(
         "flex flex-col rounded-2xl min-w-[320px] w-[320px] max-h-[calc(100vh-240px)]",
-        "bg-brand-card/50 backdrop-blur-sm",
+        "bg-brand-card/80",
         "border border-white/[0.04] border-t-2",
         config.borderColor,
-        "transition-all duration-300",
-        isOver && [config.bgGlow, "scale-[1.01] border-white/[0.1]"]
+        isOver && [config.bgGlow, "border-white/[0.1]"]
       )}
     >
       {/* Header */}
@@ -133,12 +135,11 @@ export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadCli
         ref={setNodeRef}
         className={cn(
           "flex-1 p-3 space-y-3 overflow-y-auto scrollbar-thin",
-          "transition-colors duration-300",
           isOver && "bg-white/[0.02]"
         )}
       >
         <SortableContext
-          items={leads.map((l) => l.id)}
+          items={leadIds}
           strategy={verticalListSortingStrategy}
         >
           {leads.map((lead) => (

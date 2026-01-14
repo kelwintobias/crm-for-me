@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useOptimistic, useTransition } from "react";
+import { useState, useCallback, useOptimistic, useTransition, useMemo } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -57,12 +57,20 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     ? optimisticLeads.find((l) => l.id === activeId)
     : null;
 
-  const getLeadsByStage = useCallback(
-    (stage: PipelineStage) => {
-      return optimisticLeads.filter((lead) => lead.stage === stage);
-    },
-    [optimisticLeads]
-  );
+  // Memoiza leads por stage para evitar re-renders desnecessarios
+  const leadsByStage = useMemo(() => {
+    const map: Record<PipelineStage, PlainLead[]> = {
+      NOVOS: [],
+      EM_CONTATO: [],
+      VENDIDO_UNICO: [],
+      VENDIDO_MENSAL: [],
+      PERDIDO: [],
+    };
+    optimisticLeads.forEach((lead) => {
+      map[lead.stage].push(lead);
+    });
+    return map;
+  }, [optimisticLeads]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -119,10 +127,10 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     }
   };
 
-  const handleLeadClick = (lead: PlainLead) => {
+  const handleLeadClick = useCallback((lead: PlainLead) => {
     setSelectedLead(lead);
     setIsEditModalOpen(true);
-  };
+  }, []);
 
   const handleLeadUpdate = (updatedLead: PlainLead) => {
     setLeads((prev) =>
@@ -150,7 +158,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
             <KanbanColumn
               key={stage}
               stage={stage}
-              leads={getLeadsByStage(stage)}
+              leads={leadsByStage[stage]}
               onLeadClick={handleLeadClick}
             />
           ))}
