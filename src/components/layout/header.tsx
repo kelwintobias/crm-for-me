@@ -3,6 +3,7 @@
 import { Zap, Plus, Search, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./user-menu";
+import Image from "next/image";
 
 interface HeaderProps {
   user: {
@@ -15,26 +16,25 @@ interface HeaderProps {
 
 export function Header({ user, onNewLead, onSearchClick }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 glass border-b border-white/[0.06]">
+    <header className="sticky top-0 z-50 bg-brand-card border-b border-white/[0.06]">
       <div className="container mx-auto px-4 lg:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="relative group">
-                <div className="w-10 h-10 bg-brand-accent rounded-xl flex items-center justify-center shadow-glow group-hover:shadow-glow-lg transition-shadow">
-                  <Zap className="w-5 h-5 text-text-dark" />
-                </div>
-                {/* Pulse effect */}
-                <div className="absolute inset-0 rounded-xl bg-brand-accent/30 animate-ping opacity-0 group-hover:opacity-100" style={{ animationDuration: '2s' }} />
+              <div className="relative w-10 h-10">
+                <Image
+                  src="/assets/images/branding/upboost-logo-full.png"
+                  alt="UpBoost"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div className="hidden sm:block">
                 <h1 className="font-display text-xl font-bold text-text-primary tracking-tight">
                   UpBoost
                 </h1>
-                <p className="text-[10px] text-text-tertiary uppercase tracking-widest -mt-0.5">
-                  Sales CRM
-                </p>
               </div>
             </div>
 
