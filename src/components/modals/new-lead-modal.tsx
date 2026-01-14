@@ -59,14 +59,8 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass-strong border-white/[0.08] shadow-2xl">
-        {/* Decorative gradient */}
-        <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-brand-accent/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />
-        </div>
-
-        <DialogHeader className="relative">
+      <DialogContent className="sm:max-w-md bg-brand-card border-white/[0.08] shadow-2xl">
+        <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
               <UserPlus className="w-5 h-5 text-brand-accent" />

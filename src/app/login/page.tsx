@@ -7,13 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Zap, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -32,8 +30,7 @@ export default function LoginPage() {
       }
 
       toast.success("Login realizado com sucesso!");
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch {
       toast.error("Erro ao fazer login. Tente novamente.");
     } finally {
@@ -44,18 +41,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-brand-bg relative overflow-hidden">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient orbs */}
-        <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-brand-accent/10 rounded-full blur-[120px] animate-float" />
-        <div className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] animate-float delay-300" />
-        <div className="absolute top-3/4 left-1/3 w-[400px] h-[400px] bg-emerald-500/8 rounded-full blur-[80px] animate-float delay-500" />
-
-        {/* Grid overlay */}
-        <div className="absolute inset-0 grid-bg opacity-50" />
-
-        {/* Decorative lines */}
-        <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-brand-accent/20 to-transparent" />
-        <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent" />
+      {/* Background simplificado para performance */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-accent/5 via-transparent to-blue-500/5" />
       </div>
 
       {/* Content */}
@@ -123,55 +111,59 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-text-secondary">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={loading}
-                    className="h-12 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow transition-all"
-                  />
-                </div>
+                <div className="relative z-[9999] bg-background p-4 rounded-lg border border-white/10" style={{ isolation: 'isolate' }}>
+                  <div className="space-y-2 mb-6">
+                    <Label htmlFor="email" className="text-sm font-medium text-text-secondary">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      disabled={false}
+                      className="h-12 bg-white border-white/10 focus:border-brand-accent/50 input-glow transition-all relative z-[9999] opacity-100 cursor-text text-black !pointer-events-auto"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-text-secondary">
-                    Senha
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={loading}
-                    className="h-12 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow transition-all"
-                  />
-                </div>
+                  <div className="space-y-2 mb-6">
+                    <Label htmlFor="password" className="text-sm font-medium text-text-secondary">
+                      Senha
+                    </Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={false}
+                      className="h-12 bg-white border-white/10 focus:border-brand-accent/50 input-glow transition-all relative z-[9999] opacity-100 cursor-text text-black !pointer-events-auto"
+                    />
+                  </div>
 
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 text-base font-semibold bg-brand-accent hover:bg-brand-accent/90 text-text-dark shadow-glow hover:shadow-glow-lg transition-all duration-300 group"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Entrando...
-                    </>
-                  ) : (
-                    <>
-                      Entrar
-                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 text-base font-semibold bg-brand-accent hover:bg-brand-accent/90 text-text-dark shadow-glow hover:shadow-glow-lg transition-all duration-300 group relative z-[9999] !pointer-events-auto"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      <>
+                        Entrar
+                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </div>
               </form>
 
               {/* Footer */}

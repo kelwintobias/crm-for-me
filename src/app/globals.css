@@ -9,17 +9,10 @@
     @apply border-border;
   }
 
-  html {
-    scroll-behavior: smooth;
-  }
+  /* scroll-behavior: smooth removido - causa stuttering em listas grandes */
 
   body {
     @apply bg-brand-bg text-text-primary antialiased font-sans;
-    background-image:
-      radial-gradient(at 40% 20%, rgba(255, 211, 0, 0.04) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(59, 130, 246, 0.03) 0px, transparent 50%),
-      radial-gradient(at 0% 80%, rgba(16, 185, 129, 0.03) 0px, transparent 50%);
-    background-attachment: fixed;
   }
 
   /* Selection styling */
@@ -54,23 +47,22 @@
 }
 
 @layer components {
-  /* Glass morphism panels */
+  /* Glass morphism panels - otimizado para performance */
   .glass {
-    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08];
+    @apply bg-white/[0.03] border border-white/[0.08];
   }
 
   .glass-strong {
-    @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.1];
+    @apply bg-white/[0.06] border border-white/[0.1];
   }
 
   .glass-card {
-    @apply bg-brand-card/80 backdrop-blur-xl border border-white/[0.06] shadow-card;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply bg-brand-card/80 border border-white/[0.06] shadow-card;
+    transition: background-color 0.2s, border-color 0.2s;
   }
 
   .glass-card:hover {
     @apply bg-brand-card-hover/80 border-white/[0.1] shadow-card-hover;
-    transform: translateY(-2px);
   }
 
   /* Neon glow effects */

@@ -60,7 +60,7 @@ export function Header({ user, onNewLead }: HeaderProps) {
             >
               <Bell className="w-5 h-5" />
               {/* Notification dot */}
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-brand-accent" />
             </Button>
 
             {/* Divider */}
