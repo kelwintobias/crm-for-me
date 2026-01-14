@@ -36,6 +36,12 @@ export async function getDashboardMetrics() {
   try {
     const user = await getCurrentUser();
 
+    // Periodos para comparacao
+    const now = new Date();
+    const currentMonthStart = startOfMonth(now);
+    const lastMonthStart = startOfMonth(subMonths(now, 1));
+    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+
     // Executa todas as queries em paralelo para performance
     const [
       totalRevenueResult,
@@ -44,6 +50,13 @@ export async function getDashboardMetrics() {
       averageTicketResult,
       salesDistribution,
       revenueByMonth,
+      // Metricas do mes anterior para comparacao
+      prevTotalRevenueResult,
+      prevMrrResult,
+      prevPipelineResult,
+      prevAverageTicketResult,
+      // Distribuicao por origem
+      sourceDistribution,
     ] = await Promise.all([
       // 1. KPI: Faturamento Total (soma de VENDIDO_UNICO + VENDIDO_MENSAL)
       prisma.lead.aggregate({
@@ -112,6 +125,60 @@ export async function getDashboardMetrics() {
         },
         orderBy: { createdAt: "asc" },
       }),
+
+      // 7. KPI Anterior: Faturamento do mes passado
+      prisma.lead.aggregate({
+        _sum: { value: true },
+        where: {
+          userId: user.id,
+          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+          deletedAt: null,
+        },
+      }),
+
+      // 8. KPI Anterior: MRR do mes passado
+      prisma.lead.aggregate({
+        _sum: { value: true },
+        where: {
+          userId: user.id,
+          stage: "VENDIDO_MENSAL",
+          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+          deletedAt: null,
+        },
+      }),
+
+      // 9. KPI Anterior: Pipeline do mes passado
+      prisma.lead.aggregate({
+        _sum: { value: true },
+        where: {
+          userId: user.id,
+          stage: { in: ["NOVOS", "EM_CONTATO"] },
+          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+          deletedAt: null,
+        },
+      }),
+
+      // 10. KPI Anterior: Ticket Medio do mes passado
+      prisma.lead.aggregate({
+        _avg: { value: true },
+        where: {
+          userId: user.id,
+          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+          deletedAt: null,
+        },
+      }),
+
+      // 11. Grafico: Distribuicao por Origem (todos os leads)
+      prisma.lead.groupBy({
+        by: ["source"],
+        _count: { id: true },
+        where: {
+          userId: user.id,
+          deletedAt: null,
+        },
+      }),
     ]);
 
     // Processa dados do grafico de evolucao mensal
@@ -168,18 +235,37 @@ export async function getDashboardMetrics() {
         revenue: Number(d._sum.value || 0),
       }));
 
+    // Formata distribuicao por origem
+    const SOURCE_LABELS: Record<string, string> = {
+      INSTAGRAM: "Instagram",
+      GOOGLE: "Google",
+      INDICACAO: "Indicacao",
+      OUTRO: "Outro",
+    };
+
+    const sourceData = sourceDistribution.map((d) => ({
+      name: SOURCE_LABELS[d.source] || d.source,
+      value: d._count.id,
+      source: d.source,
+    }));
+
     return {
       success: true,
       data: {
         kpis: {
           totalRevenue: Number(totalRevenueResult._sum.value || 0),
+          totalRevenuePrev: Number(prevTotalRevenueResult._sum.value || 0),
           mrr: Number(mrrResult._sum.value || 0),
+          mrrPrev: Number(prevMrrResult._sum.value || 0),
           pipeline: Number(pipelineResult._sum.value || 0),
+          pipelinePrev: Number(prevPipelineResult._sum.value || 0),
           averageTicket: Number(averageTicketResult._avg.value || 0),
+          averageTicketPrev: Number(prevAverageTicketResult._avg.value || 0),
         },
         charts: {
           distribution: distributionData,
           revenueEvolution: revenueChartData,
+          sourceDistribution: sourceData,
         },
       },
     };

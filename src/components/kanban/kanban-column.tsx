@@ -1,17 +1,19 @@
 "use client";
 
+import { memo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { Lead, PipelineStage } from "@prisma/client";
+import type { PipelineStage } from "@prisma/client";
 import { LeadCard } from "./lead-card";
 import { STAGE_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
 import { Users, MessageSquare, Package, RefreshCcw, Archive } from "lucide-react";
+import { PlainLead } from "@/types";
 
 interface KanbanColumnProps {
   stage: PipelineStage;
-  leads: Lead[];
-  onLeadClick: (lead: Lead) => void;
+  leads: PlainLead[];
+  onLeadClick: (lead: PlainLead) => void;
 }
 
 const COLUMN_CONFIG: Record<PipelineStage, {
@@ -58,7 +60,7 @@ const COLUMN_CONFIG: Record<PipelineStage, {
   },
 };
 
-export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
+export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage,
     data: {
@@ -139,16 +141,12 @@ export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
           items={leads.map((l) => l.id)}
           strategy={verticalListSortingStrategy}
         >
-          {leads.map((lead, index) => (
-            <div
+          {leads.map((lead) => (
+            <LeadCard
               key={lead.id}
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <LeadCard
-                lead={lead}
-                onClick={() => onLeadClick(lead)}
-              />
-            </div>
+              lead={lead}
+              onClick={() => onLeadClick(lead)}
+            />
           ))}
         </SortableContext>
 
@@ -179,4 +177,4 @@ export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
       )}
     </div>
   );
-}
+});

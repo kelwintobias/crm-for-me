@@ -6,10 +6,18 @@ export interface LeadWithUser extends Lead {
   user: User;
 }
 
+export interface PlainLead extends Omit<Lead, 'value'> {
+  value: number;
+}
+
+export interface PlainUser extends Omit<User, 'commissionRate'> {
+  commissionRate: number;
+}
+
 export interface KanbanColumn {
   id: PipelineStage;
   title: string;
-  leads: Lead[];
+  leads: PlainLead[];
 }
 
 export interface DashboardMetrics {

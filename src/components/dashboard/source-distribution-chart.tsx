@@ -3,27 +3,46 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-interface SalesDistributionChartProps {
+interface SourceDistributionChartProps {
   data: Array<{
     name: string;
     value: number;
+    source: string;
   }>;
 }
 
-const COLORS = {
-  "Plano Unico": "#adfa1d",
-  "Plano Mensal": "#2563eb",
+const COLORS: Record<string, string> = {
+  INSTAGRAM: "#E1306C",
+  GOOGLE: "#4285F4",
+  INDICACAO: "#10B981",
+  OUTRO: "#6B7280",
 };
 
-export function SalesDistributionChart({ data }: SalesDistributionChartProps) {
+export function SourceDistributionChart({ data }: SourceDistributionChartProps) {
   const total = data.reduce((acc, item) => acc + item.value, 0);
 
+  if (data.length === 0) {
+    return (
+      <Card className="col-span-3 lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Leads por Origem</CardTitle>
+          <CardDescription>De onde vem seus leads</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
+            Nenhum lead cadastrado
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="col-span-3">
+    <Card className="col-span-3 lg:col-span-2">
       <CardHeader>
-        <CardTitle>Distribuicao de Vendas</CardTitle>
+        <CardTitle>Leads por Origem</CardTitle>
         <CardDescription>
-          {total} vendas realizadas
+          {total} leads no total
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -44,10 +63,10 @@ export function SalesDistributionChart({ data }: SalesDistributionChartProps) {
                 }
                 labelLine={false}
               >
-                {data.map((entry, index) => (
+                {data.map((entry) => (
                   <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[entry.name as keyof typeof COLORS] || "#888888"}
+                    key={`cell-${entry.source}`}
+                    fill={COLORS[entry.source] || "#888888"}
                     className="stroke-background"
                     strokeWidth={2}
                   />
@@ -60,7 +79,7 @@ export function SalesDistributionChart({ data }: SalesDistributionChartProps) {
                   borderRadius: "8px",
                 }}
                 formatter={(value, name) => [
-                  `${value} vendas`,
+                  `${value} leads`,
                   String(name),
                 ]}
               />

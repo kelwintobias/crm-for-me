@@ -1,27 +1,33 @@
 "use client";
 
-import { User, Lead } from "@prisma/client";
 import { Header } from "../layout/header";
 import { KanbanBoard } from "../kanban/kanban-board";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { RevenueChart } from "./revenue-chart";
 import { SalesDistributionChart } from "./sales-distribution-chart";
+import { SourceDistributionChart } from "./source-distribution-chart";
 import { LayoutDashboard, Columns3 } from "lucide-react";
+import { PlainUser, PlainLead } from "@/types";
 
 interface DashboardViewProps {
-  user: User;
-  leads: Lead[];
+  user: PlainUser;
+  leads: PlainLead[];
   dashboardData: {
     kpis: {
       totalRevenue: number;
+      totalRevenuePrev: number;
       mrr: number;
+      mrrPrev: number;
       pipeline: number;
+      pipelinePrev: number;
       averageTicket: number;
+      averageTicketPrev: number;
     };
     charts: {
       distribution: Array<{ name: string; value: number }>;
       revenueEvolution: Array<{ name: string; unico: number; mensal: number }>;
+      sourceDistribution: Array<{ name: string; value: number; source: string }>;
     };
   };
 }
@@ -60,6 +66,11 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <RevenueChart data={dashboardData.charts.revenueEvolution} />
               <SalesDistributionChart data={dashboardData.charts.distribution} />
+            </div>
+
+            {/* Leads por Origem */}
+            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+              <SourceDistributionChart data={dashboardData.charts.sourceDistribution} />
             </div>
           </TabsContent>
 

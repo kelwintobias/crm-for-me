@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npx prisma:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Skill(frontend-design)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:ofertas.botconversa.com.br)"
     ]
   }
 }

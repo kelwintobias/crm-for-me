@@ -1,20 +1,20 @@
 "use client";
 
+import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Lead } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, GripVertical, Clock } from "lucide-react";
-import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS } from "@/types";
+import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, PlainLead } from "@/types";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 interface LeadCardProps {
-  lead: Lead;
+  lead: PlainLead;
   onClick: () => void;
 }
 
-export function LeadCard({ lead, onClick }: LeadCardProps) {
+export const LeadCard = memo(function LeadCard({ lead, onClick }: LeadCardProps) {
   const {
     attributes,
     listeners,
@@ -50,7 +50,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative glass-card rounded-xl overflow-hidden animate-card-enter",
+        "group relative glass-card rounded-xl overflow-hidden",
         "hover:border-white/[0.12]",
         isDragging && "opacity-60 scale-105 shadow-2xl ring-2 ring-brand-accent/50 z-50"
       )}
@@ -139,4 +139,4 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
       <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-accent/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   );
-}
+});

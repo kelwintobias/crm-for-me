@@ -11,12 +11,13 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import type { Lead, PipelineStage } from "@prisma/client";
+import type { PipelineStage } from "@prisma/client";
 import { KanbanColumn } from "./kanban-column";
 import { LeadCard } from "./lead-card";
 import { EditLeadModal } from "../modals/edit-lead-modal";
 import { updateLeadStage } from "@/app/actions/leads";
 import { toast } from "sonner";
+import { PlainLead } from "@/types";
 
 const STAGES: PipelineStage[] = [
   "NOVOS",
@@ -27,13 +28,13 @@ const STAGES: PipelineStage[] = [
 ];
 
 interface KanbanBoardProps {
-  initialLeads: Lead[];
+  initialLeads: PlainLead[];
 }
 
 export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [leads, setLeads] = useState<PlainLead[]>(initialLeads);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -118,17 +119,22 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     }
   };
 
-  const handleLeadClick = (lead: Lead) => {
+  const handleLeadClick = (lead: PlainLead) => {
     setSelectedLead(lead);
     setIsEditModalOpen(true);
   };
 
-  const handleLeadUpdate = (updatedLead: Lead) => {
+  const handleLeadUpdate = (updatedLead: PlainLead) => {
     setLeads((prev) =>
       prev.map((l) => (l.id === updatedLead.id ? updatedLead : l))
     );
     setSelectedLead(null);
     setIsEditModalOpen(false);
+  };
+
+  const handleLeadDelete = (leadId: string) => {
+    setLeads((prev) => prev.filter((l) => l.id !== leadId));
+    setSelectedLead(null);
   };
 
   return (
@@ -164,6 +170,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         onUpdate={handleLeadUpdate}
+        onDelete={handleLeadDelete}
       />
     </>
   );
