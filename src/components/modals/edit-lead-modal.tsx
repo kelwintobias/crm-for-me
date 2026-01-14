@@ -24,12 +24,14 @@ import { toast } from "sonner";
 import { Loader2, Trash2, ExternalLink, Edit3, Save, MessageCircle } from "lucide-react";
 import type { Lead, LeadSource, PlanType } from "@prisma/client";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
+import { PlainLead } from "@/types";
 
 interface EditLeadModalProps {
-  lead: Lead | null;
+  lead: PlainLead | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate: (lead: Lead) => void;
+  onUpdate: (lead: PlainLead) => void;
+  onDelete?: (leadId: string) => void;
 }
 
 export function EditLeadModal({
@@ -37,6 +39,7 @@ export function EditLeadModal({
   open,
   onOpenChange,
   onUpdate,
+  onDelete,
 }: EditLeadModalProps) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -99,7 +102,7 @@ export function EditLeadModal({
         description: "O lead foi removido do pipeline.",
       });
       onOpenChange(false);
-      window.location.reload();
+      onDelete?.(lead.id);
     } else {
       toast.error(result.error || "Erro ao excluir lead");
     }
@@ -109,14 +112,8 @@ export function EditLeadModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg glass-strong border-white/[0.08] shadow-2xl">
-        {/* Decorative gradients */}
-        <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-40 h-40 bg-brand-accent/10 rounded-full blur-3xl" />
-        </div>
-
-        <DialogHeader className="relative">
+      <DialogContent className="sm:max-w-lg bg-brand-card border-white/[0.08] shadow-2xl">
+        <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
               <Edit3 className="w-5 h-5 text-blue-400" />
