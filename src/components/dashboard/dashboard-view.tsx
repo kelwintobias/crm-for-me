@@ -1,20 +1,67 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Header } from "../layout/header";
-import { KanbanBoard } from "../kanban/kanban-board";
-import { NewLeadModal } from "../modals/new-lead-modal";
-import { EditLeadModal } from "../modals/edit-lead-modal";
-import { SearchDialog } from "../layout/search-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
-import { RevenueChart } from "./revenue-chart";
-import { SalesDistributionChart } from "./sales-distribution-chart";
-import { SourceDistributionChart } from "./source-distribution-chart";
-import { ConversionFunnel } from "./conversion-funnel";
-import { InsightsCard } from "./insights-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { LayoutDashboard, Columns3 } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
+
+// Skeleton para loading de charts
+function ChartSkeleton({ className }: { className?: string }) {
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <Skeleton className="h-5 w-32" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-[300px] w-full" />
+      </CardContent>
+    </Card>
+  );
+}
+
+// Lazy loading de componentes pesados para reduzir bundle inicial
+const KanbanBoard = dynamic(() => import("../kanban/kanban-board").then(mod => ({ default: mod.KanbanBoard })), {
+  loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
+});
+
+const NewLeadModal = dynamic(() => import("../modals/new-lead-modal").then(mod => ({ default: mod.NewLeadModal })), {
+  ssr: false,
+});
+
+const EditLeadModal = dynamic(() => import("../modals/edit-lead-modal").then(mod => ({ default: mod.EditLeadModal })), {
+  ssr: false,
+});
+
+const SearchDialog = dynamic(() => import("../layout/search-dialog").then(mod => ({ default: mod.SearchDialog })), {
+  ssr: false,
+});
+
+// Charts com lazy loading
+const RevenueChart = dynamic(() => import("./revenue-chart").then(mod => ({ default: mod.RevenueChart })), {
+  loading: () => <ChartSkeleton className="col-span-4" />,
+});
+
+const SalesDistributionChart = dynamic(() => import("./sales-distribution-chart").then(mod => ({ default: mod.SalesDistributionChart })), {
+  loading: () => <ChartSkeleton className="col-span-3" />,
+});
+
+const SourceDistributionChart = dynamic(() => import("./source-distribution-chart").then(mod => ({ default: mod.SourceDistributionChart })), {
+  loading: () => <ChartSkeleton />,
+});
+
+const ConversionFunnel = dynamic(() => import("./conversion-funnel").then(mod => ({ default: mod.ConversionFunnel })), {
+  loading: () => <ChartSkeleton className="col-span-3" />,
+});
+
+const InsightsCard = dynamic(() => import("./insights-card").then(mod => ({ default: mod.InsightsCard })), {
+  loading: () => <ChartSkeleton className="col-span-4" />,
+});
 
 interface DashboardViewProps {
   user: PlainUser;
@@ -47,6 +94,7 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ user, leads, dashboardData }: DashboardViewProps) {
+  const router = useRouter();
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
@@ -56,15 +104,16 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
   }, []);
 
   const handleUpdateLead = useCallback((_updatedLead: PlainLead) => {
-    // Atualiza o lead localmente (refresh da página para atualizar dados do servidor)
     setSelectedLead(null);
-    window.location.reload();
-  }, []);
+    // Usa router.refresh() que é muito mais eficiente que window.location.reload()
+    // Atualiza apenas os dados do servidor sem recarregar a página inteira
+    router.refresh();
+  }, [router]);
 
   const handleDeleteLead = useCallback(() => {
     setSelectedLead(null);
-    window.location.reload();
-  }, []);
+    router.refresh();
+  }, [router]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
