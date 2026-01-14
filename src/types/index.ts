@@ -1,6 +1,26 @@
-import type { Lead, User, LeadSource, PlanType, PipelineStage } from "@prisma/client";
+import type {
+  Lead,
+  User,
+  LeadSource,
+  PlanType,
+  PipelineStage,
+  Appointment,
+  AppointmentStatus,
+  AppointmentHistory,
+  HistoryAction,
+} from "@prisma/client";
 
-export type { Lead, User, LeadSource, PlanType, PipelineStage };
+export type {
+  Lead,
+  User,
+  LeadSource,
+  PlanType,
+  PipelineStage,
+  Appointment,
+  AppointmentStatus,
+  AppointmentHistory,
+  HistoryAction,
+};
 
 export interface LeadWithUser extends Lead {
   user: User;
@@ -99,4 +119,48 @@ export const STAGE_COLORS: Record<PipelineStage, string> = {
   EM_ATENDIMENTO: "bg-emerald-500",
   POS_VENDA: "bg-cyan-500",
   FINALIZADO: "bg-green-500",
+};
+
+// ============================================
+// AGENDAMENTOS
+// ============================================
+
+export interface PlainAppointment extends Omit<Appointment, 'scheduledAt' | 'createdAt' | 'updatedAt' | 'canceledAt'> {
+  scheduledAt: string;
+  createdAt: string;
+  updatedAt: string;
+  canceledAt: string | null;
+}
+
+export interface AppointmentWithDetails extends PlainAppointment {
+  lead: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  user: {
+    name: string | null;
+    email: string;
+  };
+  isOwner: boolean;
+}
+
+export interface TimeSlot {
+  time: string;
+  available: boolean;
+  scheduledAt: string;
+}
+
+export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  SCHEDULED: "Agendado",
+  COMPLETED: "Concluído",
+  CANCELED: "Cancelado",
+  NO_SHOW: "Não compareceu",
+};
+
+export const HISTORY_ACTION_LABELS: Record<HistoryAction, string> = {
+  CREATED: "Criado",
+  RESCHEDULED: "Remarcado",
+  CANCELED: "Cancelado",
+  COMPLETED: "Concluído",
 };

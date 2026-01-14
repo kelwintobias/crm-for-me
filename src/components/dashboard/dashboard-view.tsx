@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LayoutDashboard, Columns3 } from "lucide-react";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 
 // Skeleton para loading de charts
@@ -39,6 +39,18 @@ const EditLeadModal = dynamic(() => import("../modals/edit-lead-modal").then(mod
 });
 
 const SearchDialog = dynamic(() => import("../layout/search-dialog").then(mod => ({ default: mod.SearchDialog })), {
+  ssr: false,
+});
+
+const ScheduleLeadModal = dynamic(() => import("../modals/schedule-lead-modal").then(mod => ({ default: mod.ScheduleLeadModal })), {
+  ssr: false,
+});
+
+const WeeklyCalendar = dynamic(() => import("../calendar/weekly-calendar").then(mod => ({ default: mod.WeeklyCalendar })), {
+  loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
+});
+
+const AppointmentDetailModal = dynamic(() => import("../modals/appointment-detail-modal").then(mod => ({ default: mod.AppointmentDetailModal })), {
   ssr: false,
 });
 
@@ -97,7 +109,9 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
   const router = useRouter();
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   const handleSelectLead = useCallback((lead: PlainLead) => {
     setSelectedLead(lead);
@@ -121,6 +135,7 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
         user={user}
         onNewLead={() => setIsNewLeadModalOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
+        onScheduleClick={() => setIsScheduleModalOpen(true)}
       />
 
       {/* Modal de Novo Lead */}
@@ -145,6 +160,20 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
         onUpdate={handleUpdateLead}
         onDelete={handleDeleteLead}
       />
+
+      {/* Modal de Agendamento */}
+      <ScheduleLeadModal
+        open={isScheduleModalOpen}
+        onOpenChange={setIsScheduleModalOpen}
+      />
+
+      {/* Modal de Detalhes do Agendamento */}
+      <AppointmentDetailModal
+        appointmentId={selectedAppointmentId}
+        open={selectedAppointmentId !== null}
+        onOpenChange={(open) => !open && setSelectedAppointmentId(null)}
+        onUpdate={() => router.refresh()}
+      />
       <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <div>
@@ -156,7 +185,7 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+          <TabsList className="grid w-full max-w-[600px] grid-cols-3">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               Visao Geral
@@ -164,6 +193,10 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
             <TabsTrigger value="kanban" className="flex items-center gap-2">
               <Columns3 className="h-4 w-4" />
               Kanban
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              Calendário
             </TabsTrigger>
           </TabsList>
 
@@ -198,6 +231,10 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
 
           <TabsContent value="kanban" className="space-y-4">
             <KanbanBoard initialLeads={leads} />
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-4">
+            <WeeklyCalendar onAppointmentClick={(id) => setSelectedAppointmentId(id)} />
           </TabsContent>
         </Tabs>
       </main>

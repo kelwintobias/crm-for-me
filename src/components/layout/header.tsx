@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap, Plus, Search, Bell } from "lucide-react";
+import { Zap, Plus, Search, Bell, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./user-menu";
 import Image from "next/image";
@@ -12,9 +12,10 @@ interface HeaderProps {
   };
   onNewLead?: () => void;
   onSearchClick?: () => void;
+  onScheduleClick?: () => void;
 }
 
-export function Header({ user, onNewLead, onSearchClick }: HeaderProps) {
+export function Header({ user, onNewLead, onSearchClick, onScheduleClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 bg-brand-card border-b border-white/[0.06]">
       <div className="container mx-auto px-4 lg:px-6">
@@ -79,6 +80,16 @@ export function Header({ user, onNewLead, onSearchClick }: HeaderProps) {
 
             {/* Divider */}
             <div className="h-8 w-px bg-white/[0.08]" />
+
+            {/* Agendar Lead Button */}
+            <Button
+              onClick={onScheduleClick}
+              variant="outline"
+              className="hidden md:flex gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+              Agendar Lead
+            </Button>
 
             {/* New Lead Button */}
             <Button

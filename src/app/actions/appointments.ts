@@ -1,0 +1,483 @@
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+// ============================================
+// SCHEMAS DE VALIDAÇÃO
+// ============================================
+
+const createAppointmentSchema = z.object({
+  leadId: z.string().uuid(),
+  scheduledAt: z.string().datetime(), // ISO 8601
+  duration: z.number().min(15).max(240).default(60),
+  notes: z.string().optional(),
+});
+
+const updateAppointmentSchema = z.object({
+  id: z.string().uuid(),
+  scheduledAt: z.string().datetime(),
+  notes: z.string().optional(),
+});
+
+const cancelAppointmentSchema = z.object({
+  id: z.string().uuid(),
+  reason: z.string().optional(),
+});
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+async function getCurrentUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Não autorizado");
+
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+  });
+
+  if (!dbUser) throw new Error("Usuário não encontrado");
+  return dbUser;
+}
+
+// Verifica se horário está dentro do expediente (9h-18h, seg-sex)
+function isWithinBusinessHours(date: Date): boolean {
+  const hour = date.getHours();
+  const day = date.getDay(); // 0=domingo, 6=sábado
+
+  // Segunda a sexta (1-5)
+  if (day === 0 || day === 6) return false;
+
+  // 9h às 18h (última análise começa às 17h)
+  if (hour < 9 || hour >= 18) return false;
+
+  return true;
+}
+
+// Verifica conflitos de horário
+async function hasConflict(
+  scheduledAt: Date,
+  duration: number,
+  excludeAppointmentId?: string
+): Promise<boolean> {
+  const endTime = new Date(scheduledAt.getTime() + duration * 60000);
+
+  const conflicts = await prisma.appointment.findMany({
+    where: {
+      status: "SCHEDULED",
+      id: excludeAppointmentId ? { not: excludeAppointmentId } : undefined,
+      OR: [
+        // Novo agendamento começa durante agendamento existente
+        {
+          scheduledAt: { lte: scheduledAt },
+        },
+        // Novo agendamento termina durante agendamento existente
+        {
+          scheduledAt: { gte: scheduledAt, lt: endTime },
+        }
+      ]
+    },
+  });
+
+  // Verifica sobreposição real considerando a duração
+  for (const conflict of conflicts) {
+    const conflictEnd = new Date(
+      conflict.scheduledAt.getTime() + conflict.duration * 60000
+    );
+
+    // Há conflito se:
+    // - Novo agendamento começa antes do existente terminar E
+    // - Novo agendamento termina depois do existente começar
+    if (scheduledAt < conflictEnd && endTime > conflict.scheduledAt) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// ============================================
+// AÇÕES PÚBLICAS
+// ============================================
+
+// Criar agendamento
+export async function createAppointment(data: unknown) {
+  try {
+    const user = await getCurrentUser();
+    const validated = createAppointmentSchema.parse(data);
+
+    const scheduledAt = new Date(validated.scheduledAt);
+
+    // Validações
+    if (!isWithinBusinessHours(scheduledAt)) {
+      return {
+        success: false,
+        error: "Horário fora do expediente (9h-18h, seg-sex)"
+      };
+    }
+
+    if (await hasConflict(scheduledAt, validated.duration)) {
+      return {
+        success: false,
+        error: "Horário já está reservado"
+      };
+    }
+
+    // Verifica se o lead existe e pertence ao usuário
+    const lead = await prisma.lead.findUnique({
+      where: { id: validated.leadId, userId: user.id, deletedAt: null },
+    });
+
+    if (!lead) {
+      return { success: false, error: "Lead não encontrado" };
+    }
+
+    // Cria agendamento e atualiza stage do lead em uma transação
+    const appointment = await prisma.$transaction(async (tx) => {
+      // Criar agendamento
+      const apt = await tx.appointment.create({
+        data: {
+          leadId: validated.leadId,
+          userId: user.id,
+          scheduledAt,
+          duration: validated.duration,
+          notes: validated.notes,
+          status: "SCHEDULED",
+        },
+      });
+
+      // Criar histórico
+      await tx.appointmentHistory.create({
+        data: {
+          appointmentId: apt.id,
+          userId: user.id,
+          action: "CREATED",
+          newValue: JSON.stringify({
+            scheduledAt: scheduledAt.toISOString(),
+            duration: validated.duration,
+          }),
+        },
+      });
+
+      // Mover lead para coluna AGENDADO
+      await tx.lead.update({
+        where: { id: validated.leadId },
+        data: { stage: "AGENDADO" },
+      });
+
+      return apt;
+    });
+
+    revalidatePath("/");
+
+    return {
+      success: true,
+      data: {
+        id: appointment.id,
+        scheduledAt: appointment.scheduledAt.toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao criar agendamento:", error);
+    return { success: false, error: "Erro ao criar agendamento" };
+  }
+}
+
+// Remarcar agendamento
+export async function rescheduleAppointment(data: unknown) {
+  try {
+    const user = await getCurrentUser();
+    const validated = updateAppointmentSchema.parse(data);
+
+    const scheduledAt = new Date(validated.scheduledAt);
+
+    // Validações
+    if (!isWithinBusinessHours(scheduledAt)) {
+      return {
+        success: false,
+        error: "Horário fora do expediente (9h-18h, seg-sex)"
+      };
+    }
+
+    // Busca agendamento existente
+    const existing = await prisma.appointment.findUnique({
+      where: { id: validated.id },
+      include: { lead: true },
+    });
+
+    if (!existing || existing.lead.userId !== user.id) {
+      return { success: false, error: "Agendamento não encontrado" };
+    }
+
+    if (existing.status !== "SCHEDULED") {
+      return {
+        success: false,
+        error: "Apenas agendamentos ativos podem ser remarcados"
+      };
+    }
+
+    // Verifica conflito (excluindo o próprio agendamento)
+    if (await hasConflict(scheduledAt, existing.duration, validated.id)) {
+      return {
+        success: false,
+        error: "Horário já está reservado"
+      };
+    }
+
+    // Atualizar agendamento
+    const updated = await prisma.$transaction(async (tx) => {
+      const apt = await tx.appointment.update({
+        where: { id: validated.id },
+        data: {
+          scheduledAt,
+          notes: validated.notes,
+        },
+      });
+
+      // Registrar histórico
+      await tx.appointmentHistory.create({
+        data: {
+          appointmentId: apt.id,
+          userId: user.id,
+          action: "RESCHEDULED",
+          previousValue: JSON.stringify({
+            scheduledAt: existing.scheduledAt.toISOString(),
+          }),
+          newValue: JSON.stringify({
+            scheduledAt: scheduledAt.toISOString(),
+          }),
+        },
+      });
+
+      return apt;
+    });
+
+    revalidatePath("/");
+
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        scheduledAt: updated.scheduledAt.toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao remarcar agendamento:", error);
+    return { success: false, error: "Erro ao remarcar agendamento" };
+  }
+}
+
+// Cancelar agendamento
+export async function cancelAppointment(data: unknown) {
+  try {
+    const user = await getCurrentUser();
+    const validated = cancelAppointmentSchema.parse(data);
+
+    const existing = await prisma.appointment.findUnique({
+      where: { id: validated.id },
+      include: { lead: true },
+    });
+
+    if (!existing || existing.lead.userId !== user.id) {
+      return { success: false, error: "Agendamento não encontrado" };
+    }
+
+    if (existing.status === "CANCELED") {
+      return { success: false, error: "Agendamento já foi cancelado" };
+    }
+
+    // Cancelar agendamento
+    await prisma.$transaction(async (tx) => {
+      await tx.appointment.update({
+        where: { id: validated.id },
+        data: {
+          status: "CANCELED",
+          canceledAt: new Date(),
+          notes: validated.reason
+            ? `${existing.notes || ""}\nMotivo do cancelamento: ${validated.reason}`
+            : existing.notes,
+        },
+      });
+
+      // Registrar histórico
+      await tx.appointmentHistory.create({
+        data: {
+          appointmentId: validated.id,
+          userId: user.id,
+          action: "CANCELED",
+          newValue: validated.reason || "Sem motivo especificado",
+        },
+      });
+
+      // Voltar lead para EM_NEGOCIACAO
+      await tx.lead.update({
+        where: { id: existing.leadId },
+        data: { stage: "EM_NEGOCIACAO" },
+      });
+    });
+
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao cancelar agendamento:", error);
+    return { success: false, error: "Erro ao cancelar agendamento" };
+  }
+}
+
+// Buscar horários disponíveis para um dia
+export async function getAvailableSlots(date: string) {
+  try {
+    await getCurrentUser();
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    // Busca todos os agendamentos do dia
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        status: "SCHEDULED",
+        scheduledAt: {
+          gte: targetDate,
+          lt: nextDay,
+        },
+      },
+      select: {
+        scheduledAt: true,
+        duration: true,
+      },
+    });
+
+    // Gera slots de 30 em 30 minutos das 9h às 18h
+    const slots: Array<{
+      time: string;
+      available: boolean;
+      scheduledAt: string;
+    }> = [];
+
+    for (let hour = 9; hour < 18; hour++) {
+      for (let minute of [0, 30]) {
+        const slotTime = new Date(targetDate);
+        slotTime.setHours(hour, minute, 0, 0);
+
+        // Verifica se há conflito (considerando 1 hora de duração)
+        const slotEnd = new Date(slotTime.getTime() + 60 * 60000);
+
+        const hasConflict = appointments.some((apt) => {
+          const aptEnd = new Date(
+            apt.scheduledAt.getTime() + apt.duration * 60000
+          );
+          return slotTime < aptEnd && slotEnd > apt.scheduledAt;
+        });
+
+        slots.push({
+          time: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
+          available: !hasConflict,
+          scheduledAt: slotTime.toISOString(),
+        });
+      }
+    }
+
+    return { success: true, data: slots };
+  } catch (error) {
+    console.error("Erro ao buscar horários:", error);
+    return { success: false, error: "Erro ao buscar horários" };
+  }
+}
+
+// Buscar agendamentos da semana
+export async function getWeekAppointments(startDate: string) {
+  try {
+    const user = await getCurrentUser();
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        scheduledAt: { gte: start, lt: end },
+        status: { in: ["SCHEDULED", "COMPLETED"] },
+      },
+      include: {
+        lead: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { scheduledAt: "asc" },
+    });
+
+    return {
+      success: true,
+      data: appointments.map((apt) => ({
+        id: apt.id,
+        leadId: apt.lead.id,
+        leadName: apt.lead.name,
+        leadPhone: apt.lead.phone,
+        vendedora: apt.user.name || apt.user.email,
+        scheduledAt: apt.scheduledAt.toISOString(),
+        duration: apt.duration,
+        status: apt.status,
+        notes: apt.notes,
+        isOwner: apt.userId === user.id,
+      })),
+    };
+  } catch (error) {
+    console.error("Erro ao buscar agendamentos:", error);
+    return { success: false, error: "Erro ao buscar agendamentos" };
+  }
+}
+
+// Buscar histórico de um agendamento
+export async function getAppointmentHistory(appointmentId: string) {
+  try {
+    await getCurrentUser();
+
+    const history = await prisma.appointmentHistory.findMany({
+      where: { appointmentId },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      success: true,
+      data: history.map((h) => ({
+        action: h.action,
+        userName: h.user.name || h.user.email,
+        previousValue: h.previousValue,
+        newValue: h.newValue,
+        createdAt: h.createdAt.toISOString(),
+      })),
+    };
+  } catch (error) {
+    console.error("Erro ao buscar histórico:", error);
+    return { success: false, error: "Erro ao buscar histórico" };
+  }
+}
