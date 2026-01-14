@@ -27,8 +27,8 @@ export function SalesDistributionChart({ data }: SalesDistributionChartProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[300px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
             <PieChart>
               <Pie
                 data={data}
