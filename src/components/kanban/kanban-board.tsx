@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useOptimistic, useTransition, useMemo } from "react";
+import { useState, useCallback, useOptimistic, useTransition, useMemo, useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -18,6 +18,7 @@ import { EditLeadModal } from "../modals/edit-lead-modal";
 import { updateLeadStage } from "@/app/actions/leads";
 import { toast } from "sonner";
 import { PlainLead } from "@/types";
+import { Users, Sparkles } from "lucide-react";
 
 const STAGES: PipelineStage[] = [
   "NOVOS",
@@ -37,6 +38,11 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [, startTransition] = useTransition();
+
+  // Sincroniza leads quando initialLeads muda (ex: após criar novo lead)
+  useEffect(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]);
 
   // Optimistic updates
   const [optimisticLeads, updateOptimisticLeads] = useOptimistic(
@@ -144,6 +150,29 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     setLeads((prev) => prev.filter((l) => l.id !== leadId));
     setSelectedLead(null);
   };
+
+  // Empty state quando não há leads
+  if (leads.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="relative">
+          <div className="w-20 h-20 rounded-full bg-brand-accent/10 flex items-center justify-center mb-6">
+            <Users className="w-10 h-10 text-brand-accent/50" />
+          </div>
+          <Sparkles className="w-5 h-5 text-brand-accent absolute -top-1 -right-1 animate-pulse" />
+        </div>
+        <h3 className="text-xl font-semibold text-text-primary mb-2">
+          Nenhum lead ainda
+        </h3>
+        <p className="text-text-secondary text-center max-w-sm mb-1">
+          Comece adicionando seu primeiro lead ao pipeline clicando em
+        </p>
+        <p className="text-brand-accent font-medium">
+          &quot;+ Novo Lead&quot;
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
