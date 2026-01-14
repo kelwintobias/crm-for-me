@@ -26,11 +26,12 @@ enum PlanType {
 }
 
 enum PipelineStage {
-  NOVOS
-  EM_CONTATO
-  VENDIDO_UNICO
-  VENDIDO_MENSAL
-  PERDIDO
+  NOVO_LEAD
+  EM_NEGOCIACAO
+  AGENDADO
+  EM_ATENDIMENTO
+  POS_VENDA
+  FINALIZADO
 }
 
 enum UserRole {
@@ -71,7 +72,7 @@ model Lead {
   // Plano Unico: R$ 35,90 | Plano Mensal: R$ 45,90 | Indefinido: R$ 0,00
   value     Decimal       @default(0) @db.Decimal(10, 2)
 
-  stage     PipelineStage @default(NOVOS)
+  stage     PipelineStage @default(NOVO_LEAD)
   notes     String?  @db.Text
 
   userId    String

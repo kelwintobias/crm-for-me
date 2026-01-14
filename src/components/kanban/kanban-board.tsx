@@ -21,11 +21,12 @@ import { PlainLead } from "@/types";
 import { Users, Sparkles } from "lucide-react";
 
 const STAGES: PipelineStage[] = [
-  "NOVOS",
-  "EM_CONTATO",
-  "VENDIDO_UNICO",
-  "VENDIDO_MENSAL",
-  "PERDIDO",
+  "NOVO_LEAD",
+  "EM_NEGOCIACAO",
+  "AGENDADO",
+  "EM_ATENDIMENTO",
+  "POS_VENDA",
+  "FINALIZADO",
 ];
 
 interface KanbanBoardProps {
@@ -66,11 +67,12 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
   // Memoiza leads por stage para evitar re-renders desnecessarios
   const leadsByStage = useMemo(() => {
     const map: Record<PipelineStage, PlainLead[]> = {
-      NOVOS: [],
-      EM_CONTATO: [],
-      VENDIDO_UNICO: [],
-      VENDIDO_MENSAL: [],
-      PERDIDO: [],
+      NOVO_LEAD: [],
+      EM_NEGOCIACAO: [],
+      AGENDADO: [],
+      EM_ATENDIMENTO: [],
+      POS_VENDA: [],
+      FINALIZADO: [],
     };
     optimisticLeads.forEach((lead) => {
       map[lead.stage].push(lead);

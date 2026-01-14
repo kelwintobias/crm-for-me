@@ -7,7 +7,7 @@ import type { PipelineStage } from "@prisma/client";
 import { LeadCard } from "./lead-card";
 import { STAGE_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
-import { Users, MessageSquare, Package, RefreshCcw, Archive } from "lucide-react";
+import { Users, MessageSquare, Calendar, Headphones, CheckCircle, CheckCheck } from "lucide-react";
 import { PlainLead } from "@/types";
 
 interface KanbanColumnProps {
@@ -23,40 +23,47 @@ const COLUMN_CONFIG: Record<PipelineStage, {
   icon: React.ReactNode;
   gradient: string;
 }> = {
-  NOVOS: {
+  NOVO_LEAD: {
     color: "text-blue-400",
-    bgGlow: "glow-novos",
+    bgGlow: "glow-novo-lead",
     borderColor: "border-t-blue-500",
     icon: <Users className="w-4 h-4" />,
     gradient: "from-blue-500/20 to-blue-500/0",
   },
-  EM_CONTATO: {
+  EM_NEGOCIACAO: {
     color: "text-amber-400",
-    bgGlow: "glow-contato",
+    bgGlow: "glow-negociacao",
     borderColor: "border-t-amber-500",
     icon: <MessageSquare className="w-4 h-4" />,
     gradient: "from-amber-500/20 to-amber-500/0",
   },
-  VENDIDO_UNICO: {
+  AGENDADO: {
+    color: "text-purple-400",
+    bgGlow: "glow-agendado",
+    borderColor: "border-t-purple-500",
+    icon: <Calendar className="w-4 h-4" />,
+    gradient: "from-purple-500/20 to-purple-500/0",
+  },
+  EM_ATENDIMENTO: {
     color: "text-emerald-400",
-    bgGlow: "glow-vendido-unico",
+    bgGlow: "glow-atendimento",
     borderColor: "border-t-emerald-500",
-    icon: <Package className="w-4 h-4" />,
+    icon: <Headphones className="w-4 h-4" />,
     gradient: "from-emerald-500/20 to-emerald-500/0",
   },
-  VENDIDO_MENSAL: {
-    color: "text-brand-accent",
-    bgGlow: "glow-vendido-mensal",
-    borderColor: "border-t-brand-accent",
-    icon: <RefreshCcw className="w-4 h-4" />,
-    gradient: "from-brand-accent/20 to-brand-accent/0",
+  POS_VENDA: {
+    color: "text-cyan-400",
+    bgGlow: "glow-pos-venda",
+    borderColor: "border-t-cyan-500",
+    icon: <CheckCircle className="w-4 h-4" />,
+    gradient: "from-cyan-500/20 to-cyan-500/0",
   },
-  PERDIDO: {
-    color: "text-red-400",
-    bgGlow: "glow-perdido",
-    borderColor: "border-t-red-500",
-    icon: <Archive className="w-4 h-4" />,
-    gradient: "from-red-500/20 to-red-500/0",
+  FINALIZADO: {
+    color: "text-green-400",
+    bgGlow: "glow-finalizado",
+    borderColor: "border-t-green-500",
+    icon: <CheckCheck className="w-4 h-4" />,
+    gradient: "from-green-500/20 to-green-500/0",
   },
 };
 

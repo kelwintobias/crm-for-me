@@ -59,11 +59,12 @@ export const PLAN_PRICES = {
 // ============================================
 
 export const STAGE_LABELS: Record<PipelineStage, string> = {
-  NOVOS: "Novos",
-  EM_CONTATO: "Em Contato",
-  VENDIDO_UNICO: "Vendido - Unico",
-  VENDIDO_MENSAL: "Vendido - Mensal",
-  PERDIDO: "Perdido/Arquivado",
+  NOVO_LEAD: "Novo Lead",
+  EM_NEGOCIACAO: "Em Negociação",
+  AGENDADO: "Agendado",
+  EM_ATENDIMENTO: "Em Atendimento",
+  POS_VENDA: "Pós-Venda",
+  FINALIZADO: "Finalizado",
 };
 
 export const SOURCE_LABELS: Record<LeadSource, string> = {
@@ -92,9 +93,10 @@ export const SOURCE_BADGE_VARIANTS: Record<
 
 // Cores dos stages para UI
 export const STAGE_COLORS: Record<PipelineStage, string> = {
-  NOVOS: "bg-blue-500",
-  EM_CONTATO: "bg-amber-500",
-  VENDIDO_UNICO: "bg-emerald-500",
-  VENDIDO_MENSAL: "bg-green-500",
-  PERDIDO: "bg-gray-500",
+  NOVO_LEAD: "bg-blue-500",
+  EM_NEGOCIACAO: "bg-amber-500",
+  AGENDADO: "bg-purple-500",
+  EM_ATENDIMENTO: "bg-emerald-500",
+  POS_VENDA: "bg-cyan-500",
+  FINALIZADO: "bg-green-500",
 };
