@@ -8,6 +8,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,10 +31,19 @@ import {
 } from "@/components/ui/select";
 import { updateLead, deleteLead } from "@/app/actions/leads";
 import { toast } from "sonner";
-import { Loader2, Trash2, ExternalLink, Edit3, Save, MessageCircle } from "lucide-react";
+import { Loader2, Trash2, ExternalLink, Edit3, Save, MessageCircle, AlertTriangle } from "lucide-react";
 import type { LeadSource, PlanType } from "@prisma/client";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
 import { PlainLead } from "@/types";
+
+// Validação de telefone brasileiro (10-11 dígitos)
+function validatePhone(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 0) return null;
+  if (digits.length < 10) return "Telefone muito curto (min. 10 digitos)";
+  if (digits.length > 11) return "Telefone muito longo (max. 11 digitos)";
+  return null;
+}
 
 interface EditLeadModalProps {
   lead: PlainLead | null;
@@ -43,8 +62,10 @@ export function EditLeadModal({
 }: EditLeadModalProps) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [source, setSource] = useState<LeadSource>("INSTAGRAM");
   const [plan, setPlan] = useState<PlanType>("INDEFINIDO");
   const [notes, setNotes] = useState("");
@@ -53,11 +74,18 @@ export function EditLeadModal({
     if (lead) {
       setName(lead.name);
       setPhone(lead.phone);
+      setPhoneError(null);
       setSource(lead.source);
       setPlan(lead.plan);
       setNotes(lead.notes || "");
     }
   }, [lead]);
+
+  const handlePhoneChange = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    setPhone(digits);
+    setPhoneError(validatePhone(digits));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,19 +114,22 @@ export function EditLeadModal({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!lead) return;
 
-    if (!confirm("Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita.")) return;
-
     setDeleting(true);
+    setShowDeleteDialog(false);
 
     const result = await deleteLead(lead.id);
 
     setDeleting(false);
 
     if (result.success) {
-      toast.success("Lead excluído", {
+      toast.success("Lead excluido", {
         description: "O lead foi removido do pipeline.",
       });
       onOpenChange(false);
@@ -161,10 +192,16 @@ export function EditLeadModal({
                 <Input
                   id="edit-phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-11 flex-1 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow font-mono transition-all"
+                  className={`h-11 flex-1 bg-white/[0.03] focus:border-brand-accent/50 input-glow font-mono transition-all ${
+                    phoneError
+                      ? "border-red-500/50 focus:border-red-500"
+                      : phone.length >= 10
+                        ? "border-emerald-500/50"
+                        : "border-white/10"
+                  }`}
                 />
                 <Button
                   type="button"
@@ -177,9 +214,13 @@ export function EditLeadModal({
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-text-tertiary font-mono">
-                {formatPhone(phone)}
-              </p>
+              {phoneError ? (
+                <p className="text-xs text-red-400">{phoneError}</p>
+              ) : (
+                <p className="text-xs text-text-tertiary font-mono">
+                  {formatPhone(phone)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -272,7 +313,7 @@ export function EditLeadModal({
             <Button
               type="button"
               variant="ghost"
-              onClick={handleDelete}
+              onClick={handleDeleteClick}
               disabled={loading || deleting}
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-2"
             >
@@ -296,7 +337,7 @@ export function EditLeadModal({
               </Button>
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !!phoneError}
                 className="bg-brand-accent hover:bg-brand-accent/90 text-text-dark font-semibold shadow-glow hover:shadow-glow-lg transition-all duration-300 gap-2"
               >
                 {loading ? (
@@ -315,6 +356,35 @@ export function EditLeadModal({
           </div>
         </form>
       </DialogContent>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir <strong>{lead?.name}</strong>? Esta acao nao pode ser desfeita.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir Lead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Lightbulb,
@@ -162,7 +163,11 @@ const TYPE_STYLES = {
 };
 
 export function InsightsCard({ kpis, metrics, sourceDistribution }: InsightsCardProps) {
-  const insights = generateInsights(kpis, metrics, sourceDistribution);
+  // Memoiza insights para evitar recalcular em cada render
+  const insights = useMemo(
+    () => generateInsights(kpis, metrics, sourceDistribution),
+    [kpis, metrics, sourceDistribution]
+  );
 
   return (
     <Card className="col-span-full lg:col-span-4">

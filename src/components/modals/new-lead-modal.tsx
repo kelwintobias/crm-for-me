@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +21,17 @@ import {
 } from "@/components/ui/select";
 import { createLead } from "@/app/actions/leads";
 import { toast } from "sonner";
-import { Loader2, UserPlus, Sparkles } from "lucide-react";
+import { Loader2, UserPlus, Sparkles, Columns3 } from "lucide-react";
 import type { LeadSource } from "@prisma/client";
+
+// Validação de telefone brasileiro (10-11 dígitos)
+function validatePhone(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 0) return null;
+  if (digits.length < 10) return "Telefone muito curto (min. 10 digitos)";
+  if (digits.length > 11) return "Telefone muito longo (max. 11 digitos)";
+  return null;
+}
 
 interface NewLeadModalProps {
   open: boolean;
@@ -30,8 +40,18 @@ interface NewLeadModalProps {
 }
 
 export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<LeadSource>("INSTAGRAM");
+  const [stage, setStage] = useState<"NOVOS" | "EM_CONTATO">("NOVOS");
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const handlePhoneChange = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    setPhone(digits);
+    setPhoneError(validatePhone(digits));
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,6 +59,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
 
     const formData = new FormData(e.currentTarget);
     formData.set("source", source);
+    formData.set("stage", stage);
 
     const result = await createLead(formData);
 
@@ -51,11 +72,14 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       onOpenChange(false);
       (e.target as HTMLFormElement).reset();
       setSource("INSTAGRAM");
+      setStage("NOVOS");
+      setPhone("");
+      setPhoneError(null);
       if (onSuccess) {
         onSuccess();
       } else {
-        // Recarrega para atualizar os dados do server component
-        window.location.reload();
+        // Usa router.refresh() para atualizar dados sem recarregar a página inteira
+        router.refresh();
       }
     } else {
       toast.error(result.error || "Erro ao criar lead");
@@ -105,53 +129,92 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
               name="phone"
               type="tel"
               placeholder="11999999999"
+              value={phone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
               required
               disabled={loading}
-              pattern="[0-9]*"
               inputMode="numeric"
-              className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50 input-glow font-mono transition-all"
+              className={`h-11 bg-white/[0.03] focus:border-brand-accent/50 input-glow font-mono transition-all ${
+                phoneError
+                  ? "border-red-500/50 focus:border-red-500"
+                  : phone.length >= 10
+                    ? "border-emerald-500/50"
+                    : "border-white/10"
+              }`}
             />
-            <p className="text-xs text-text-tertiary">
-              Apenas números (DDD + número)
-            </p>
+            {phoneError ? (
+              <p className="text-xs text-red-400">{phoneError}</p>
+            ) : (
+              <p className="text-xs text-text-tertiary">
+                Apenas numeros (DDD + numero)
+              </p>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="source" className="text-sm font-medium text-text-secondary flex items-center gap-2">
-              Origem
-              <span className="text-brand-accent">*</span>
-            </Label>
-            <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-              <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
-                <SelectValue placeholder="Selecione a origem" />
-              </SelectTrigger>
-              <SelectContent className="glass-strong border-white/10">
-                <SelectItem value="INSTAGRAM" className="focus:bg-brand-accent/20">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                    Instagram
-                  </span>
-                </SelectItem>
-                <SelectItem value="GOOGLE" className="focus:bg-brand-accent/20">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" />
-                    Google
-                  </span>
-                </SelectItem>
-                <SelectItem value="INDICACAO" className="focus:bg-brand-accent/20">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Indicação
-                  </span>
-                </SelectItem>
-                <SelectItem value="OUTRO" className="focus:bg-brand-accent/20">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-gray-500" />
-                    Outro
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="source" className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                Origem
+                <span className="text-brand-accent">*</span>
+              </Label>
+              <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
+                <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
+                  <SelectValue placeholder="Selecione a origem" />
+                </SelectTrigger>
+                <SelectContent className="glass-strong border-white/10">
+                  <SelectItem value="INSTAGRAM" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+                      Instagram
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="GOOGLE" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      Google
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="INDICACAO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Indicacao
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="OUTRO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-500" />
+                      Outro
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stage" className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                <Columns3 className="w-3.5 h-3.5" />
+                Coluna
+              </Label>
+              <Select value={stage} onValueChange={(v) => setStage(v as "NOVOS" | "EM_CONTATO")}>
+                <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
+                  <SelectValue placeholder="Selecione a coluna" />
+                </SelectTrigger>
+                <SelectContent className="glass-strong border-white/10">
+                  <SelectItem value="NOVOS" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      Novos
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="EM_CONTATO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      Em Contato
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
@@ -166,7 +229,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!phoneError || phone.length < 10}
               className="bg-brand-accent hover:bg-brand-accent/90 text-text-dark font-semibold shadow-glow hover:shadow-glow-lg transition-all duration-300 group gap-2"
             >
               {loading ? (

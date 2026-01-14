@@ -52,6 +52,7 @@ const createLeadSchema = z.object({
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos"),
   source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]),
   plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
+  stage: z.enum(["NOVOS", "EM_CONTATO"]).optional(), // Apenas colunas iniciais permitidas
 });
 
 const updateLeadSchema = z.object({
@@ -107,10 +108,12 @@ export async function createLead(formData: FormData) {
       phone: (formData.get("phone") as string).replace(/\D/g, ""),
       source: formData.get("source") as LeadSource,
       plan: (formData.get("plan") as PlanType) || "INDEFINIDO",
+      stage: (formData.get("stage") as PipelineStage) || undefined,
     };
 
     const validatedData = createLeadSchema.parse(rawData);
     const plan = validatedData.plan || "INDEFINIDO";
+    const stage = validatedData.stage || "NOVOS";
 
     // SEGURANCA: Valor financeiro calculado APENAS no backend
     // O frontend NAO pode enviar ou manipular este valor
@@ -122,6 +125,7 @@ export async function createLead(formData: FormData) {
         phone: validatedData.phone,
         source: validatedData.source,
         plan: plan,
+        stage: stage,
         value: value,
         userId: user.id,
       },
