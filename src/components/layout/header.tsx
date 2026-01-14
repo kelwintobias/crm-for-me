@@ -10,9 +10,10 @@ interface HeaderProps {
     email: string;
   };
   onNewLead?: () => void;
+  onSearchClick?: () => void;
 }
 
-export function Header({ user, onNewLead }: HeaderProps) {
+export function Header({ user, onNewLead, onSearchClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 glass border-b border-white/[0.06]">
       <div className="container mx-auto px-4 lg:px-6">
@@ -40,14 +41,27 @@ export function Header({ user, onNewLead }: HeaderProps) {
             {/* Divider */}
             <div className="hidden lg:block h-8 w-px bg-white/[0.08]" />
 
-            {/* Search bar placeholder */}
-            <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-text-tertiary hover:border-white/[0.1] transition-colors cursor-pointer group">
+            {/* Search bar */}
+            <button
+              onClick={onSearchClick}
+              className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-text-tertiary hover:border-white/[0.1] hover:bg-white/[0.05] transition-colors cursor-pointer group"
+            >
               <Search className="w-4 h-4 group-hover:text-text-secondary transition-colors" />
               <span className="text-sm">Buscar leads...</span>
               <kbd className="ml-8 px-1.5 py-0.5 rounded text-[10px] bg-white/[0.05] border border-white/[0.1] font-mono">
                 ⌘K
               </kbd>
-            </div>
+            </button>
+
+            {/* Mobile search button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onSearchClick}
+              className="lg:hidden text-text-secondary hover:text-text-primary hover:bg-white/[0.05]"
+            >
+              <Search className="w-5 h-5" />
+            </Button>
           </div>
 
           {/* Actions */}
