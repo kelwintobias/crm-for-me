@@ -6,7 +6,8 @@
       "Bash(npm run build:*)",
       "Skill(frontend-design)",
       "Bash(npx tsc:*)",
-      "WebFetch(domain:ofertas.botconversa.com.br)"
+      "WebFetch(domain:ofertas.botconversa.com.br)",
+      "Bash(wc:*)"
     ]
   }
 }
