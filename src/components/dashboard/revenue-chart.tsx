@@ -67,7 +67,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                   borderColor: "hsl(var(--border))",
                   borderRadius: "8px",
                 }}
-                formatter={(value: number) => [formatCurrency(value), ""]}
+                formatter={(value) => [formatCurrency(Number(value)), ""]}
                 labelStyle={{ color: "hsl(var(--foreground))" }}
               />
               <Legend
