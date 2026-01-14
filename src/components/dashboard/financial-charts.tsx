@@ -140,9 +140,9 @@ export function FinancialCharts({ metrics }: FinancialChartsProps) {
             </div>
           </div>
 
-          <div className="h-[280px]">
+          <div className="h-[280px] min-w-0">
             {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                 <BarChart
                   data={barData}
                   margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
@@ -234,9 +234,9 @@ export function FinancialCharts({ metrics }: FinancialChartsProps) {
             </div>
           </div>
 
-          <div className="h-[280px]">
+          <div className="h-[280px] min-w-0">
             {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                 <PieChart>
                   <Pie
                     data={pieData}
