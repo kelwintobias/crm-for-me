@@ -4,8 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { LeadSource, PlanType, PipelineStage } from "@prisma/client";
+import type { LeadSource, PlanType, PipelineStage, Lead } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
+
+// ============================================
+// HELPERS
+// ============================================
+
+function serializeLead(lead: Lead) {
+  return {
+    ...lead,
+    value: Number(lead.value),
+  };
+}
 
 // ============================================
 // PRECOS FIXOS DOS PLANOS (REGRA DE NEGOCIO)
@@ -117,7 +128,7 @@ export async function createLead(formData: FormData) {
     });
 
     revalidatePath("/");
-    return { success: true, data: lead };
+    return { success: true, data: serializeLead(lead) };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };
@@ -189,7 +200,7 @@ export async function updateLead(data: {
     });
 
     revalidatePath("/");
-    return { success: true, data: lead };
+    return { success: true, data: serializeLead(lead) };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };
@@ -233,7 +244,7 @@ export async function updateLeadStage(id: string, stage: PipelineStage) {
     });
 
     revalidatePath("/");
-    return { success: true, data: lead };
+    return { success: true, data: serializeLead(lead) };
   } catch {
     return { success: false, error: "Erro ao mover lead" };
   }
@@ -289,7 +300,7 @@ export async function getLeads() {
       },
     });
 
-    return { success: true, data: leads };
+    return { success: true, data: leads.map(serializeLead) };
   } catch {
     return { success: false, error: "Erro ao buscar leads" };
   }
