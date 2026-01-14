@@ -22,7 +22,7 @@ import {
 import { updateLead, deleteLead } from "@/app/actions/leads";
 import { toast } from "sonner";
 import { Loader2, Trash2, ExternalLink, Edit3, Save, MessageCircle } from "lucide-react";
-import type { Lead, LeadSource, PlanType } from "@prisma/client";
+import type { LeadSource, PlanType } from "@prisma/client";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
 import { PlainLead } from "@/types";
 

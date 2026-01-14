@@ -38,7 +38,7 @@ export async function getDashboardMetrics() {
 
     // Periodos para comparacao
     const now = new Date();
-    const currentMonthStart = startOfMonth(now);
+    const _currentMonthStart = startOfMonth(now); // Reservado para uso futuro
     const lastMonthStart = startOfMonth(subMonths(now, 1));
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
@@ -57,6 +57,10 @@ export async function getDashboardMetrics() {
       prevAverageTicketResult,
       // Distribuicao por origem
       sourceDistribution,
+      // Funil e conversao
+      stageDistribution,
+      totalLeadsCount,
+      vendidosCount,
     ] = await Promise.all([
       // 1. KPI: Faturamento Total (soma de VENDIDO_UNICO + VENDIDO_MENSAL)
       prisma.lead.aggregate({
@@ -179,6 +183,33 @@ export async function getDashboardMetrics() {
           deletedAt: null,
         },
       }),
+
+      // 12. Funil: Contagem por Stage
+      prisma.lead.groupBy({
+        by: ["stage"],
+        _count: { id: true },
+        where: {
+          userId: user.id,
+          deletedAt: null,
+        },
+      }),
+
+      // 13. Total de leads
+      prisma.lead.count({
+        where: {
+          userId: user.id,
+          deletedAt: null,
+        },
+      }),
+
+      // 14. Total de vendidos
+      prisma.lead.count({
+        where: {
+          userId: user.id,
+          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          deletedAt: null,
+        },
+      }),
     ]);
 
     // Processa dados do grafico de evolucao mensal
@@ -249,6 +280,30 @@ export async function getDashboardMetrics() {
       source: d.source,
     }));
 
+    // Formata dados do funil
+    const STAGE_ORDER = ["NOVOS", "EM_CONTATO", "VENDIDO_UNICO", "VENDIDO_MENSAL", "PERDIDO"];
+    const STAGE_LABELS: Record<string, string> = {
+      NOVOS: "Novos",
+      EM_CONTATO: "Em Contato",
+      VENDIDO_UNICO: "Vendido Unico",
+      VENDIDO_MENSAL: "Vendido Mensal",
+      PERDIDO: "Perdido",
+    };
+
+    const funnelData = STAGE_ORDER.map((stage) => {
+      const found = stageDistribution.find((d) => d.stage === stage);
+      return {
+        stage,
+        name: STAGE_LABELS[stage] || stage,
+        value: found?._count.id || 0,
+      };
+    });
+
+    // Taxa de conversao
+    const taxaConversao = totalLeadsCount > 0
+      ? Math.round((vendidosCount / totalLeadsCount) * 100)
+      : 0;
+
     return {
       success: true,
       data: {
@@ -266,6 +321,14 @@ export async function getDashboardMetrics() {
           distribution: distributionData,
           revenueEvolution: revenueChartData,
           sourceDistribution: sourceData,
+          funnel: funnelData,
+        },
+        metrics: {
+          totalLeads: totalLeadsCount,
+          vendidos: vendidosCount,
+          taxaConversao,
+          leadsEmContato: funnelData.find(d => d.stage === "EM_CONTATO")?.value || 0,
+          leadsPerdidos: funnelData.find(d => d.stage === "PERDIDO")?.value || 0,
         },
       },
     };

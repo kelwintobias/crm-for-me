@@ -50,6 +50,14 @@ export default async function HomePage() {
       distribution: [],
       revenueEvolution: [],
       sourceDistribution: [],
+      funnel: [],
+    },
+    metrics: {
+      totalLeads: 0,
+      vendidos: 0,
+      taxaConversao: 0,
+      leadsEmContato: 0,
+      leadsPerdidos: 0,
     },
   };
 

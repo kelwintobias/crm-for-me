@@ -1,12 +1,18 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { Header } from "../layout/header";
 import { KanbanBoard } from "../kanban/kanban-board";
+import { NewLeadModal } from "../modals/new-lead-modal";
+import { EditLeadModal } from "../modals/edit-lead-modal";
+import { SearchDialog } from "../layout/search-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { RevenueChart } from "./revenue-chart";
 import { SalesDistributionChart } from "./sales-distribution-chart";
 import { SourceDistributionChart } from "./source-distribution-chart";
+import { ConversionFunnel } from "./conversion-funnel";
+import { InsightsCard } from "./insights-card";
 import { LayoutDashboard, Columns3 } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 
@@ -28,14 +34,68 @@ interface DashboardViewProps {
       distribution: Array<{ name: string; value: number }>;
       revenueEvolution: Array<{ name: string; unico: number; mensal: number }>;
       sourceDistribution: Array<{ name: string; value: number; source: string }>;
+      funnel: Array<{ stage: string; name: string; value: number }>;
+    };
+    metrics: {
+      totalLeads: number;
+      vendidos: number;
+      taxaConversao: number;
+      leadsEmContato: number;
+      leadsPerdidos: number;
     };
   };
 }
 
 export function DashboardView({ user, leads, dashboardData }: DashboardViewProps) {
+  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
+
+  const handleSelectLead = useCallback((lead: PlainLead) => {
+    setSelectedLead(lead);
+  }, []);
+
+  const handleUpdateLead = useCallback((_updatedLead: PlainLead) => {
+    // Atualiza o lead localmente (refresh da página para atualizar dados do servidor)
+    setSelectedLead(null);
+    window.location.reload();
+  }, []);
+
+  const handleDeleteLead = useCallback(() => {
+    setSelectedLead(null);
+    window.location.reload();
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header user={user} />
+      <Header
+        user={user}
+        onNewLead={() => setIsNewLeadModalOpen(true)}
+        onSearchClick={() => setIsSearchOpen(true)}
+      />
+
+      {/* Modal de Novo Lead */}
+      <NewLeadModal
+        open={isNewLeadModalOpen}
+        onOpenChange={setIsNewLeadModalOpen}
+      />
+
+      {/* Dialog de Busca */}
+      <SearchDialog
+        open={isSearchOpen}
+        onOpenChange={setIsSearchOpen}
+        leads={leads}
+        onSelectLead={handleSelectLead}
+      />
+
+      {/* Modal de Edição (quando selecionado pela busca) */}
+      <EditLeadModal
+        lead={selectedLead}
+        open={selectedLead !== null}
+        onOpenChange={(open) => !open && setSelectedLead(null)}
+        onUpdate={handleUpdateLead}
+        onDelete={handleDeleteLead}
+      />
       <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <div>
@@ -66,6 +126,19 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <RevenueChart data={dashboardData.charts.revenueEvolution} />
               <SalesDistributionChart data={dashboardData.charts.distribution} />
+            </div>
+
+            {/* Funil e Insights */}
+            <div className="grid gap-4 lg:grid-cols-7">
+              <ConversionFunnel
+                data={dashboardData.charts.funnel}
+                taxaConversao={dashboardData.metrics.taxaConversao}
+              />
+              <InsightsCard
+                kpis={dashboardData.kpis}
+                metrics={dashboardData.metrics}
+                sourceDistribution={dashboardData.charts.sourceDistribution}
+              />
             </div>
 
             {/* Leads por Origem */}

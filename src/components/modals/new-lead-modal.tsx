@@ -26,7 +26,7 @@ import type { LeadSource } from "@prisma/client";
 interface NewLeadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProps) {
@@ -49,9 +49,14 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
         description: "O lead foi adicionado ao pipeline.",
       });
       onOpenChange(false);
-      onSuccess();
       (e.target as HTMLFormElement).reset();
       setSource("INSTAGRAM");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        // Recarrega para atualizar os dados do server component
+        window.location.reload();
+      }
     } else {
       toast.error(result.error || "Erro ao criar lead");
     }
