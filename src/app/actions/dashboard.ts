@@ -38,7 +38,6 @@ export async function getDashboardMetrics() {
 
     // Periodos para comparacao
     const now = new Date();
-    const _currentMonthStart = startOfMonth(now); // Reservado para uso futuro
     const lastMonthStart = startOfMonth(subMonths(now, 1));
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
 

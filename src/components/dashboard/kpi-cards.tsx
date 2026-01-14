@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Users, CreditCard, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
@@ -21,17 +22,17 @@ function calcVariation(current: number, prev: number): number {
   return ((current - prev) / prev) * 100;
 }
 
-export function KPICards({ metrics }: KPICardsProps) {
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
-  const kpis = [
+export function KPICards({ metrics }: KPICardsProps) {
+  // Memoiza os KPIs para evitar recálculos desnecessários em cada render
+  const kpis = useMemo(() => [
     {
       title: "Faturamento Total",
-      value: formatCurrency(metrics.totalRevenue),
+      value: currencyFormatter.format(metrics.totalRevenue),
       variation: calcVariation(metrics.totalRevenue, metrics.totalRevenuePrev),
       description: "vs mes anterior",
       icon: DollarSign,
@@ -40,7 +41,7 @@ export function KPICards({ metrics }: KPICardsProps) {
     },
     {
       title: "MRR (Recorrente)",
-      value: formatCurrency(metrics.mrr),
+      value: currencyFormatter.format(metrics.mrr),
       variation: calcVariation(metrics.mrr, metrics.mrrPrev),
       description: "vs mes anterior",
       icon: TrendingUp,
@@ -49,7 +50,7 @@ export function KPICards({ metrics }: KPICardsProps) {
     },
     {
       title: "Pipeline",
-      value: formatCurrency(metrics.pipeline),
+      value: currencyFormatter.format(metrics.pipeline),
       variation: calcVariation(metrics.pipeline, metrics.pipelinePrev),
       description: "vs mes anterior",
       icon: Users,
@@ -58,14 +59,14 @@ export function KPICards({ metrics }: KPICardsProps) {
     },
     {
       title: "Ticket Medio",
-      value: formatCurrency(metrics.averageTicket),
+      value: currencyFormatter.format(metrics.averageTicket),
       variation: calcVariation(metrics.averageTicket, metrics.averageTicketPrev),
       description: "vs mes anterior",
       icon: CreditCard,
       iconColor: "text-violet-500",
       bgColor: "bg-violet-500/10",
     },
-  ];
+  ], [metrics]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

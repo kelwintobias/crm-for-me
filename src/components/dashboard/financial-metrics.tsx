@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import {
   DollarSign,
   TrendingUp,
@@ -15,80 +15,91 @@ interface FinancialMetricsProps {
   metrics: DashboardMetrics;
 }
 
-// Formatar moeda brasileira
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
+// Formatador reutilizável (instanciado uma vez)
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
-// Animação de contagem para valores monetários
-function AnimatedCurrency({
+// Animação de contagem otimizada - usa steps em vez de frames
+// Reduz de ~90 re-renders para ~20 re-renders por animação
+const AnimatedCurrency = memo(function AnimatedCurrency({
   value,
-  duration = 1500,
+  duration = 800,
+  steps = 20,
 }: {
   value: number;
   duration?: number;
+  steps?: number;
 }) {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(value);
 
   useEffect(() => {
-    let startTime: number;
-    let animationFrame: number;
+    if (value === 0) {
+      setCount(0);
+      return;
+    }
 
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
+    let step = 0;
+    const stepDuration = duration / steps;
 
-      // Easing function for smooth deceleration
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      setCount(easeOut * value);
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
+    const interval = setInterval(() => {
+      step++;
+      if (step >= steps) {
+        setCount(value);
+        clearInterval(interval);
+      } else {
+        // Easing: acelera no início, desacelera no fim
+        const progress = step / steps;
+        const easeOut = 1 - Math.pow(1 - progress, 2);
+        setCount(easeOut * value);
       }
-    };
+    }, stepDuration);
 
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [value, duration]);
+    return () => clearInterval(interval);
+  }, [value, duration, steps]);
 
-  return <span>{formatCurrency(count)}</span>;
-}
+  return <span>{currencyFormatter.format(count)}</span>;
+});
 
-// Animação de contagem para números inteiros
-function AnimatedCounter({
+// Animação de contagem otimizada para inteiros
+const AnimatedCounter = memo(function AnimatedCounter({
   value,
-  duration = 1500,
+  duration = 800,
+  steps = 15,
 }: {
   value: number;
   duration?: number;
+  steps?: number;
 }) {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(value);
 
   useEffect(() => {
-    let startTime: number;
-    let animationFrame: number;
+    if (value === 0) {
+      setCount(0);
+      return;
+    }
 
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
+    let step = 0;
+    const stepDuration = duration / steps;
 
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(easeOut * value));
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
+    const interval = setInterval(() => {
+      step++;
+      if (step >= steps) {
+        setCount(value);
+        clearInterval(interval);
+      } else {
+        const progress = step / steps;
+        const easeOut = 1 - Math.pow(1 - progress, 2);
+        setCount(Math.floor(easeOut * value));
       }
-    };
+    }, stepDuration);
 
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [value, duration]);
+    return () => clearInterval(interval);
+  }, [value, duration, steps]);
 
   return <span>{count}</span>;
-}
+});
 
 export function FinancialMetrics({ metrics }: FinancialMetricsProps) {
   return (
