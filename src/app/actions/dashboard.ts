@@ -61,32 +61,33 @@ export async function getDashboardMetrics() {
       totalLeadsCount,
       vendidosCount,
     ] = await Promise.all([
-      // 1. KPI: Faturamento Total (soma de VENDIDO_UNICO + VENDIDO_MENSAL)
+      // 1. KPI: Faturamento Total (soma de POS_VENDA + FINALIZADO)
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
 
-      // 2. KPI: MRR - Monthly Recurring Revenue (apenas VENDIDO_MENSAL)
+      // 2. KPI: MRR - Monthly Recurring Revenue (apenas PLANO_MENSAL em POS_VENDA/FINALIZADO)
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: "VENDIDO_MENSAL",
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
+          plan: "PLANO_MENSAL",
           deletedAt: null,
         },
       }),
 
-      // 3. KPI: Pipeline (valor potencial em NOVOS + EM_CONTATO)
+      // 3. KPI: Pipeline (valor potencial em NOVO_LEAD + EM_NEGOCIACAO + AGENDADO)
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["NOVOS", "EM_CONTATO"] },
+          stage: { in: ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO"] },
           deletedAt: null,
         },
       }),
@@ -96,7 +97,7 @@ export async function getDashboardMetrics() {
         _avg: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
@@ -108,7 +109,7 @@ export async function getDashboardMetrics() {
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
@@ -117,7 +118,7 @@ export async function getDashboardMetrics() {
       prisma.lead.findMany({
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           createdAt: { gte: subMonths(new Date(), 3) },
           deletedAt: null,
         },
@@ -134,7 +135,7 @@ export async function getDashboardMetrics() {
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
         },
@@ -145,7 +146,8 @@ export async function getDashboardMetrics() {
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: "VENDIDO_MENSAL",
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
+          plan: "PLANO_MENSAL",
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
         },
@@ -156,7 +158,7 @@ export async function getDashboardMetrics() {
         _sum: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["NOVOS", "EM_CONTATO"] },
+          stage: { in: ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO"] },
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
         },
@@ -167,7 +169,7 @@ export async function getDashboardMetrics() {
         _avg: { value: true },
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
         },
@@ -205,7 +207,7 @@ export async function getDashboardMetrics() {
       prisma.lead.count({
         where: {
           userId: user.id,
-          stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+          stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
@@ -280,13 +282,14 @@ export async function getDashboardMetrics() {
     }));
 
     // Formata dados do funil
-    const STAGE_ORDER = ["NOVOS", "EM_CONTATO", "VENDIDO_UNICO", "VENDIDO_MENSAL", "PERDIDO"];
+    const STAGE_ORDER = ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"];
     const STAGE_LABELS: Record<string, string> = {
-      NOVOS: "Novos",
-      EM_CONTATO: "Em Contato",
-      VENDIDO_UNICO: "Vendido Unico",
-      VENDIDO_MENSAL: "Vendido Mensal",
-      PERDIDO: "Perdido",
+      NOVO_LEAD: "Novo Lead",
+      EM_NEGOCIACAO: "Em Negociacao",
+      AGENDADO: "Agendado",
+      EM_ATENDIMENTO: "Em Atendimento",
+      POS_VENDA: "Pos-Venda",
+      FINALIZADO: "Finalizado",
     };
 
     const funnelData = STAGE_ORDER.map((stage) => {
@@ -326,8 +329,8 @@ export async function getDashboardMetrics() {
           totalLeads: totalLeadsCount,
           vendidos: vendidosCount,
           taxaConversao,
-          leadsEmContato: funnelData.find(d => d.stage === "EM_CONTATO")?.value || 0,
-          leadsPerdidos: funnelData.find(d => d.stage === "PERDIDO")?.value || 0,
+          leadsEmContato: funnelData.find(d => d.stage === "EM_NEGOCIACAO")?.value || 0,
+          leadsPerdidos: 0, // Removido conceito de "perdido" no novo fluxo
         },
       },
     };
@@ -376,7 +379,7 @@ export async function getDetailedMetrics() {
     const vendidos = await prisma.lead.count({
       where: {
         userId: user.id,
-        stage: { in: ["VENDIDO_UNICO", "VENDIDO_MENSAL"] },
+        stage: { in: ["POS_VENDA", "FINALIZADO"] },
         deletedAt: null,
       },
     });

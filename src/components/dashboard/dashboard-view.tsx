@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Header } from "../layout/header";
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LayoutDashboard, Columns3 } from "lucide-react";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 
 // Skeleton para loading de charts
@@ -39,6 +39,18 @@ const EditLeadModal = dynamic(() => import("../modals/edit-lead-modal").then(mod
 });
 
 const SearchDialog = dynamic(() => import("../layout/search-dialog").then(mod => ({ default: mod.SearchDialog })), {
+  ssr: false,
+});
+
+const ScheduleLeadModal = dynamic(() => import("../modals/schedule-lead-modal").then(mod => ({ default: mod.ScheduleLeadModal })), {
+  ssr: false,
+});
+
+const WeeklyCalendar = dynamic(() => import("../calendar/weekly-calendar").then(mod => ({ default: mod.WeeklyCalendar })), {
+  loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
+});
+
+const AppointmentDetailModal = dynamic(() => import("../modals/appointment-detail-modal").then(mod => ({ default: mod.AppointmentDetailModal })), {
   ssr: false,
 });
 
@@ -97,7 +109,17 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
   const router = useRouter();
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+
+  // PERF FIX: Estado controlado da aba para desmontagem seletiva de componentes
+  const [activeTab, setActiveTab] = useState<string>("overview");
+
+  // PERF FIX: Memoizar flags para evitar renderização de componentes em abas inativas
+  const shouldRenderCharts = useMemo(() => activeTab === "overview", [activeTab]);
+  const shouldRenderKanban = useMemo(() => activeTab === "kanban", [activeTab]);
+  const shouldRenderCalendar = useMemo(() => activeTab === "calendar", [activeTab]);
 
   const handleSelectLead = useCallback((lead: PlainLead) => {
     setSelectedLead(lead);
@@ -121,6 +143,7 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
         user={user}
         onNewLead={() => setIsNewLeadModalOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
+        onScheduleClick={() => setIsScheduleModalOpen(true)}
       />
 
       {/* Modal de Novo Lead */}
@@ -145,6 +168,20 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
         onUpdate={handleUpdateLead}
         onDelete={handleDeleteLead}
       />
+
+      {/* Modal de Agendamento */}
+      <ScheduleLeadModal
+        open={isScheduleModalOpen}
+        onOpenChange={setIsScheduleModalOpen}
+      />
+
+      {/* Modal de Detalhes do Agendamento */}
+      <AppointmentDetailModal
+        appointmentId={selectedAppointmentId}
+        open={selectedAppointmentId !== null}
+        onOpenChange={(open) => !open && setSelectedAppointmentId(null)}
+        onUpdate={() => router.refresh()}
+      />
       <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <div>
@@ -155,8 +192,9 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
           </div>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+        {/* PERF FIX: Tabs controladas para desmontagem seletiva */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full max-w-[600px] grid-cols-3">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               Visao Geral
@@ -165,39 +203,54 @@ export function DashboardView({ user, leads, dashboardData }: DashboardViewProps
               <Columns3 className="h-4 w-4" />
               Kanban
             </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              Calendário
+            </TabsTrigger>
           </TabsList>
 
+          {/* PERF FIX: Renderização condicional - componentes são DESMONTADOS quando não visíveis */}
           <TabsContent value="overview" className="space-y-4">
-            {/* KPI Cards */}
-            <KPICards metrics={dashboardData.kpis} />
+            {shouldRenderCharts && (
+              <>
+                {/* KPI Cards */}
+                <KPICards metrics={dashboardData.kpis} />
 
-            {/* Charts Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <RevenueChart data={dashboardData.charts.revenueEvolution} />
-              <SalesDistributionChart data={dashboardData.charts.distribution} />
-            </div>
+                {/* Charts Grid */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                  <RevenueChart data={dashboardData.charts.revenueEvolution} />
+                  <SalesDistributionChart data={dashboardData.charts.distribution} />
+                </div>
 
-            {/* Funil e Insights */}
-            <div className="grid gap-4 lg:grid-cols-7">
-              <ConversionFunnel
-                data={dashboardData.charts.funnel}
-                taxaConversao={dashboardData.metrics.taxaConversao}
-              />
-              <InsightsCard
-                kpis={dashboardData.kpis}
-                metrics={dashboardData.metrics}
-                sourceDistribution={dashboardData.charts.sourceDistribution}
-              />
-            </div>
+                {/* Funil e Insights */}
+                <div className="grid gap-4 lg:grid-cols-7">
+                  <ConversionFunnel
+                    data={dashboardData.charts.funnel}
+                    taxaConversao={dashboardData.metrics.taxaConversao}
+                  />
+                  <InsightsCard
+                    kpis={dashboardData.kpis}
+                    metrics={dashboardData.metrics}
+                    sourceDistribution={dashboardData.charts.sourceDistribution}
+                  />
+                </div>
 
-            {/* Leads por Origem */}
-            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-              <SourceDistributionChart data={dashboardData.charts.sourceDistribution} />
-            </div>
+                {/* Leads por Origem */}
+                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+                  <SourceDistributionChart data={dashboardData.charts.sourceDistribution} />
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="kanban" className="space-y-4">
-            <KanbanBoard initialLeads={leads} />
+            {shouldRenderKanban && <KanbanBoard initialLeads={leads} />}
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-4">
+            {shouldRenderCalendar && (
+              <WeeklyCalendar onAppointmentClick={(id) => setSelectedAppointmentId(id)} />
+            )}
           </TabsContent>
         </Tabs>
       </main>

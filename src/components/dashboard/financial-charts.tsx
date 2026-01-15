@@ -7,13 +7,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
   Legend,
 } from "recharts";
 import type { DashboardMetrics } from "@/types";
+import { SafeChartContainer } from "@/components/ui/safe-chart-container";
 
 interface FinancialChartsProps {
   metrics: DashboardMetrics;
@@ -140,50 +140,50 @@ export function FinancialCharts({ metrics }: FinancialChartsProps) {
             </div>
           </div>
 
-          <div className="h-[280px] min-w-0">
-            {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                <BarChart
-                  data={barData}
-                  margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.05)"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="monthLabel"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
-                    tickFormatter={(value) =>
-                      value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value
-                    }
-                  />
-                  <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)" }} />
-                  <Bar
-                    dataKey="vendaUnica"
-                    name="Venda Única"
-                    fill={COLORS.vendaUnica}
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  />
-                  <Bar
-                    dataKey="assinatura"
-                    name="Assinatura"
-                    fill={COLORS.assinatura}
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
+          {/* PERF FIX: SafeChartContainer previne erros de dimensões negativas */}
+          {barData.length > 0 ? (
+            <SafeChartContainer height={280} minHeight={200}>
+              <BarChart
+                data={barData}
+                margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.05)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="monthLabel"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
+                  tickFormatter={(value) =>
+                    value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value
+                  }
+                />
+                <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)" }} />
+                <Bar
+                  dataKey="vendaUnica"
+                  name="Venda Única"
+                  fill={COLORS.vendaUnica}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                />
+                <Bar
+                  dataKey="assinatura"
+                  name="Assinatura"
+                  fill={COLORS.assinatura}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                />
+              </BarChart>
+            </SafeChartContainer>
+          ) : (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
@@ -210,7 +210,6 @@ export function FinancialCharts({ metrics }: FinancialChartsProps) {
                 </div>
               </div>
             )}
-          </div>
         </div>
       </div>
 
@@ -234,39 +233,39 @@ export function FinancialCharts({ metrics }: FinancialChartsProps) {
             </div>
           </div>
 
-          <div className="h-[280px] min-w-0">
-            {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color}
-                        className="transition-all duration-300 hover:opacity-80"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomPieTooltip />} />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    formatter={(value) => (
-                      <span className="text-text-secondary text-sm">{value}</span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
+          {/* PERF FIX: SafeChartContainer previne erros de dimensões negativas */}
+          {pieData.length > 0 ? (
+            <SafeChartContainer height={280} minHeight={200}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={4}
+                  dataKey="value"
+                  strokeWidth={0}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.color}
+                      className="transition-all duration-300 hover:opacity-80"
+                    />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  formatter={(value) => (
+                    <span className="text-text-secondary text-sm">{value}</span>
+                  )}
+                />
+              </PieChart>
+            </SafeChartContainer>
+          ) : (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
@@ -299,7 +298,6 @@ export function FinancialCharts({ metrics }: FinancialChartsProps) {
                 </div>
               </div>
             )}
-          </div>
 
           {/* Resumo abaixo do gráfico */}
           {pieData.length > 0 && (

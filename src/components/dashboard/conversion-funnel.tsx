@@ -54,12 +54,13 @@ export function ConversionFunnel({ data, taxaConversao }: ConversionFunnelProps)
         {funnelData.map((item) => {
           const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
           const width = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+          const color = STAGE_COLORS[item.stage] || "bg-gray-500";
 
           return (
             <div key={item.stage} className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className={`p-1.5 rounded ${STAGE_COLORS[item.stage]}/20 text-${STAGE_COLORS[item.stage].replace('bg-', '')}`}>
+                  <span className={`p-1.5 rounded ${color}/20 text-${color.replace("bg-", "")}`}>
                     {STAGE_ICONS[item.stage]}
                   </span>
                   <span className="font-medium">{item.name}</span>
@@ -71,7 +72,7 @@ export function ConversionFunnel({ data, taxaConversao }: ConversionFunnelProps)
               </div>
               <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div
-                  className={`h-full ${STAGE_COLORS[item.stage]} rounded-full transition-all duration-500`}
+                  className={`h-full ${color} rounded-full transition-all duration-500`}
                   style={{ width: `${width}%` }}
                 />
               </div>

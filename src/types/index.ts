@@ -1,6 +1,26 @@
-import type { Lead, User, LeadSource, PlanType, PipelineStage } from "@prisma/client";
+import type {
+  Lead,
+  User,
+  LeadSource,
+  PlanType,
+  PipelineStage,
+  Appointment,
+  AppointmentStatus,
+  AppointmentHistory,
+  HistoryAction,
+} from "@prisma/client";
 
-export type { Lead, User, LeadSource, PlanType, PipelineStage };
+export type {
+  Lead,
+  User,
+  LeadSource,
+  PlanType,
+  PipelineStage,
+  Appointment,
+  AppointmentStatus,
+  AppointmentHistory,
+  HistoryAction,
+};
 
 export interface LeadWithUser extends Lead {
   user: User;
@@ -59,11 +79,12 @@ export const PLAN_PRICES = {
 // ============================================
 
 export const STAGE_LABELS: Record<PipelineStage, string> = {
-  NOVOS: "Novos",
-  EM_CONTATO: "Em Contato",
-  VENDIDO_UNICO: "Vendido - Unico",
-  VENDIDO_MENSAL: "Vendido - Mensal",
-  PERDIDO: "Perdido/Arquivado",
+  NOVO_LEAD: "Novo Lead",
+  EM_NEGOCIACAO: "Em Negociação",
+  AGENDADO: "Agendado",
+  EM_ATENDIMENTO: "Em Atendimento",
+  POS_VENDA: "Pós-Venda",
+  FINALIZADO: "Finalizado",
 };
 
 export const SOURCE_LABELS: Record<LeadSource, string> = {
@@ -92,9 +113,54 @@ export const SOURCE_BADGE_VARIANTS: Record<
 
 // Cores dos stages para UI
 export const STAGE_COLORS: Record<PipelineStage, string> = {
-  NOVOS: "bg-blue-500",
-  EM_CONTATO: "bg-amber-500",
-  VENDIDO_UNICO: "bg-emerald-500",
-  VENDIDO_MENSAL: "bg-green-500",
-  PERDIDO: "bg-gray-500",
+  NOVO_LEAD: "bg-blue-500",
+  EM_NEGOCIACAO: "bg-amber-500",
+  AGENDADO: "bg-purple-500",
+  EM_ATENDIMENTO: "bg-emerald-500",
+  POS_VENDA: "bg-cyan-500",
+  FINALIZADO: "bg-green-500",
+};
+
+// ============================================
+// AGENDAMENTOS
+// ============================================
+
+export interface PlainAppointment extends Omit<Appointment, 'scheduledAt' | 'createdAt' | 'updatedAt' | 'canceledAt'> {
+  scheduledAt: string;
+  createdAt: string;
+  updatedAt: string;
+  canceledAt: string | null;
+}
+
+export interface AppointmentWithDetails extends PlainAppointment {
+  lead: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  user: {
+    name: string | null;
+    email: string;
+  };
+  isOwner: boolean;
+}
+
+export interface TimeSlot {
+  time: string;
+  available: boolean;
+  scheduledAt: string;
+}
+
+export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  SCHEDULED: "Agendado",
+  COMPLETED: "Concluído",
+  CANCELED: "Cancelado",
+  NO_SHOW: "Não compareceu",
+};
+
+export const HISTORY_ACTION_LABELS: Record<HistoryAction, string> = {
+  CREATED: "Criado",
+  RESCHEDULED: "Remarcado",
+  CANCELED: "Cancelado",
+  COMPLETED: "Concluído",
 };
