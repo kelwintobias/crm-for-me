@@ -1,8 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { memo, useCallback, useEffect, useRef } from "react";
 import type { PipelineStage } from "@prisma/client";
 import { LeadCard } from "./lead-card";
 import { STAGE_LABELS } from "@/types";
@@ -14,81 +12,82 @@ interface KanbanColumnProps {
   stage: PipelineStage;
   leads: PlainLead[];
   onLeadClick: (lead: PlainLead) => void;
+  onDragStart: (lead: PlainLead, e: React.MouseEvent | React.TouchEvent) => void;
+  registerRef: (stage: PipelineStage, el: HTMLDivElement | null) => void;
 }
 
+// PERF: Config estática fora do componente
 const COLUMN_CONFIG: Record<PipelineStage, {
   color: string;
-  bgGlow: string;
   borderColor: string;
   icon: React.ReactNode;
   gradient: string;
 }> = {
   NOVO_LEAD: {
     color: "text-blue-400",
-    bgGlow: "glow-novo-lead",
     borderColor: "border-t-blue-500",
     icon: <Users className="w-4 h-4" />,
     gradient: "from-blue-500/20 to-blue-500/0",
   },
   EM_NEGOCIACAO: {
     color: "text-amber-400",
-    bgGlow: "glow-negociacao",
     borderColor: "border-t-amber-500",
     icon: <MessageSquare className="w-4 h-4" />,
     gradient: "from-amber-500/20 to-amber-500/0",
   },
   AGENDADO: {
     color: "text-purple-400",
-    bgGlow: "glow-agendado",
     borderColor: "border-t-purple-500",
     icon: <Calendar className="w-4 h-4" />,
     gradient: "from-purple-500/20 to-purple-500/0",
   },
   EM_ATENDIMENTO: {
     color: "text-emerald-400",
-    bgGlow: "glow-atendimento",
     borderColor: "border-t-emerald-500",
     icon: <Headphones className="w-4 h-4" />,
     gradient: "from-emerald-500/20 to-emerald-500/0",
   },
   POS_VENDA: {
     color: "text-cyan-400",
-    bgGlow: "glow-pos-venda",
     borderColor: "border-t-cyan-500",
     icon: <CheckCircle className="w-4 h-4" />,
     gradient: "from-cyan-500/20 to-cyan-500/0",
   },
   FINALIZADO: {
     color: "text-green-400",
-    bgGlow: "glow-finalizado",
     borderColor: "border-t-green-500",
     icon: <CheckCheck className="w-4 h-4" />,
     gradient: "from-green-500/20 to-green-500/0",
   },
 };
 
-export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: stage,
-    data: {
-      type: "column",
-      stage,
-    },
-  });
-
+function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef }: KanbanColumnProps) {
+  const columnRef = useRef<HTMLDivElement>(null);
   const config = COLUMN_CONFIG[stage];
 
-  // Memoiza o array de IDs para o SortableContext
-  const leadIds = useMemo(() => leads.map((l) => l.id), [leads]);
+  // Registra ref na montagem
+  useEffect(() => {
+    registerRef(stage, columnRef.current);
+    return () => registerRef(stage, null);
+  }, [stage, registerRef]);
+
+  // Factory de handlers
+  const getClickHandler = useCallback(
+    (lead: PlainLead) => () => onLeadClick(lead),
+    [onLeadClick]
+  );
 
   return (
     <div
+      ref={columnRef}
       className={cn(
-        "flex flex-col rounded-2xl min-w-[320px] w-[320px] max-h-[calc(100vh-240px)]",
+        "group flex flex-col rounded-2xl min-w-[320px] w-[320px] max-h-[calc(100vh-240px)]",
         "bg-brand-card/80",
         "border border-white/[0.04] border-t-2",
         config.borderColor,
-        isOver && [config.bgGlow, "border-white/[0.1]"]
+        // PERF: Estilos de hover via data-attribute (setado pelo JS no board)
+        "data-[drag-over=true]:border-white/20",
+        "data-[drag-over=true]:bg-white/[0.02]"
       )}
     >
       {/* Header */}
@@ -96,7 +95,6 @@ export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadCli
         "p-4 relative overflow-hidden",
         "border-b border-white/[0.04]"
       )}>
-        {/* Background gradient */}
         <div className={cn(
           "absolute inset-0 bg-gradient-to-b opacity-50",
           config.gradient
@@ -119,13 +117,12 @@ export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadCli
                 {leads.length === 0
                   ? "Nenhum lead"
                   : leads.length === 1
-                  ? "1 lead"
-                  : `${leads.length} leads`}
+                    ? "1 lead"
+                    : `${leads.length} leads`}
               </p>
             </div>
           </div>
 
-          {/* Count badge */}
           <div className={cn(
             "min-w-[32px] h-8 px-2.5 rounded-lg flex items-center justify-center",
             "font-bold text-sm font-mono",
@@ -138,25 +135,15 @@ export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadCli
       </div>
 
       {/* Cards container */}
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "flex-1 p-3 space-y-3 overflow-y-auto scrollbar-thin",
-          isOver && "bg-white/[0.02]"
-        )}
-      >
-        <SortableContext
-          items={leadIds}
-          strategy={verticalListSortingStrategy}
-        >
-          {leads.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              onClick={() => onLeadClick(lead)}
-            />
-          ))}
-        </SortableContext>
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto scrollbar-thin">
+        {leads.map((lead) => (
+          <LeadCard
+            key={lead.id}
+            lead={lead}
+            onClick={getClickHandler(lead)}
+            onDragStart={onDragStart}
+          />
+        ))}
 
         {leads.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -173,16 +160,33 @@ export const KanbanColumn = memo(function KanbanColumn({ stage, leads, onLeadCli
             </p>
           </div>
         )}
-      </div>
 
-      {/* Drop indicator */}
-      {isOver && (
-        <div className="absolute inset-x-3 bottom-3 h-16 rounded-xl border-2 border-dashed border-brand-accent/30 bg-brand-accent/5 flex items-center justify-center">
+        {/* Indicador de drop - sempre visível, opacidade controlada por CSS */}
+        <div className={cn(
+          "h-14 rounded-xl border-2 border-dashed flex items-center justify-center",
+          "opacity-0 group-data-[drag-over=true]:opacity-100",
+          "transition-opacity duration-75",
+          "border-brand-accent/40 bg-brand-accent/5"
+        )}>
           <span className="text-xs text-brand-accent font-medium">
             Solte aqui
           </span>
         </div>
-      )}
+      </div>
     </div>
   );
+}
+
+// PERF: Memo otimizado
+export const KanbanColumn = memo(KanbanColumnInner, (prevProps, nextProps) => {
+  if (prevProps.stage !== nextProps.stage) return false;
+  if (prevProps.onLeadClick !== nextProps.onLeadClick) return false;
+  if (prevProps.onDragStart !== nextProps.onDragStart) return false;
+  if (prevProps.leads.length !== nextProps.leads.length) return false;
+
+  for (let i = 0; i < prevProps.leads.length; i++) {
+    if (prevProps.leads[i].id !== nextProps.leads[i].id) return false;
+  }
+
+  return true;
 });
