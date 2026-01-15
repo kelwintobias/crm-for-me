@@ -6,6 +6,10 @@ const prisma = new PrismaClient();
 // ============================================
 // CONFIGURACAO DO SEED
 // ============================================
+
+// Tipo interno para controle da geracao do seed
+type SeedStage = "NOVOS" | "EM_CONTATO" | "VENDIDO_UNICO" | "VENDIDO_MENSAL" | "PERDIDO";
+
 const SEED_CONFIG = {
   TOTAL_LEADS: 1500,
   DAYS_RANGE: 90,
@@ -22,7 +26,7 @@ const PLAN_PRICES: Record<PlanType, number> = {
 };
 
 // Distribuicao realista de stages para simular um funil de vendas
-const STAGE_DISTRIBUTION: { stage: PipelineStage; weight: number }[] = [
+const STAGE_DISTRIBUTION: { stage: SeedStage; weight: number }[] = [
   { stage: "NOVOS", weight: 0.25 },           // 25% - Leads novos
   { stage: "EM_CONTATO", weight: 0.20 },      // 20% - Em negociacao
   { stage: "VENDIDO_UNICO", weight: 0.25 },   // 25% - Vendas unicas
@@ -34,11 +38,27 @@ const STAGE_DISTRIBUTION: { stage: PipelineStage; weight: number }[] = [
 // FUNCOES AUXILIARES
 // ============================================
 
-function getWeightedStage(): PipelineStage {
+function mapSeedStageToPipelineStage(seedStage: SeedStage): PipelineStage {
+  switch (seedStage) {
+    case "NOVOS":
+      return "NOVO_LEAD";
+    case "EM_CONTATO":
+      return "EM_NEGOCIACAO";
+    case "VENDIDO_UNICO":
+    case "VENDIDO_MENSAL":
+    case "PERDIDO":
+      return "FINALIZADO";
+    default:
+      return "NOVO_LEAD";
+  }
+}
+
+function getWeightedStage(): SeedStage {
   const random = Math.random();
   let cumulative = 0;
 
   for (const { stage, weight } of STAGE_DISTRIBUTION) {
+
     cumulative += weight;
     if (random <= cumulative) {
       return stage;
@@ -70,7 +90,7 @@ function getRandomDateInRange(days: number): Date {
   return new Date(timestamp);
 }
 
-function getPlanAndValueForStage(stage: PipelineStage): { plan: PlanType; value: number } {
+function getPlanAndValueForStage(stage: SeedStage): { plan: PlanType; value: number } {
   // REGRA DE CONSISTENCIA ESTRITA
   // Se vendido, o plano DEVE corresponder ao tipo de venda
   if (stage === "VENDIDO_UNICO") {
@@ -216,7 +236,7 @@ async function main() {
       source,
       plan,
       value,
-      stage,
+      stage: mapSeedStageToPipelineStage(stage),
       userId: user.id,
       createdAt,
       updatedAt: createdAt,

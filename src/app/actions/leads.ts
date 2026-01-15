@@ -35,14 +35,6 @@ function getPlanValue(plan: PlanType): Decimal {
   return new Decimal(PLAN_PRICES[plan]);
 }
 
-// Funcao helper para determinar o plano baseado no stage
-// Quando o lead e movido para VENDIDO_*, o plano deve ser consistente
-function getPlanFromStage(stage: PipelineStage): PlanType | null {
-  if (stage === "VENDIDO_UNICO") return "PLANO_UNICO";
-  if (stage === "VENDIDO_MENSAL") return "PLANO_MENSAL";
-  return null;
-}
-
 // ============================================
 // SCHEMAS DE VALIDACAO
 // ============================================
@@ -52,7 +44,7 @@ const createLeadSchema = z.object({
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos"),
   source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]),
   plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
-  stage: z.enum(["NOVOS", "EM_CONTATO"]).optional(), // Apenas colunas iniciais permitidas
+  stage: z.enum(["NOVO_LEAD", "EM_NEGOCIACAO"]).optional(), // Apenas colunas iniciais permitidas
 });
 
 const updateLeadSchema = z.object({
@@ -61,7 +53,7 @@ const updateLeadSchema = z.object({
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos").optional(),
   source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]).optional(),
   plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
-  stage: z.enum(["NOVOS", "EM_CONTATO", "VENDIDO_UNICO", "VENDIDO_MENSAL", "PERDIDO"]).optional(),
+  stage: z.enum(["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"]).optional(),
   notes: z.string().nullable().optional(),
 });
 
@@ -113,7 +105,7 @@ export async function createLead(formData: FormData) {
 
     const validatedData = createLeadSchema.parse(rawData);
     const plan = validatedData.plan || "INDEFINIDO";
-    const stage = validatedData.stage || "NOVOS";
+    const stage = validatedData.stage || "NOVO_LEAD";
 
     // SEGURANCA: Valor financeiro calculado APENAS no backend
     // O frontend NAO pode enviar ou manipular este valor
@@ -184,12 +176,6 @@ export async function updateLead(data: {
     // o plano e valor sao atualizados automaticamente
     if (validatedData.stage) {
       updateData.stage = validatedData.stage;
-
-      const forcedPlan = getPlanFromStage(validatedData.stage);
-      if (forcedPlan) {
-        updateData.plan = forcedPlan;
-        updateData.value = getPlanValue(forcedPlan);
-      }
     }
 
     // Se o plano for alterado explicitamente (sem mudanca de stage)
@@ -235,12 +221,6 @@ export async function updateLeadStage(id: string, stage: PipelineStage) {
 
     // LOGICA DE CONSISTENCIA ao mover no Kanban
     const updateData: Record<string, unknown> = { stage };
-
-    const forcedPlan = getPlanFromStage(stage);
-    if (forcedPlan) {
-      updateData.plan = forcedPlan;
-      updateData.value = getPlanValue(forcedPlan);
-    }
 
     const lead = await prisma.lead.update({
       where: { id },
