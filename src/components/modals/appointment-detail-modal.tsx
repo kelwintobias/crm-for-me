@@ -44,7 +44,7 @@ import {
 import { TimeSlot } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatPhone } from "@/lib/utils";
 
 interface AppointmentDetailModalProps {
   appointmentId: string | null;
@@ -224,17 +224,6 @@ export function AppointmentDetailModal({
       setIsCanceling(false);
       setShowCancelDialog(false);
     }
-  };
-
-  const formatPhone = (phone: string) => {
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length === 11) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-    }
-    if (digits.length === 10) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    }
-    return phone;
   };
 
   const isDateDisabled = (date: Date) => {
@@ -453,7 +442,7 @@ export function AppointmentDetailModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar Agendamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              O lead será movido de volta para "Em Negociação" e o horário ficará disponível
+              O lead será movido de volta para &quot;Em Negociação&quot; e o horário ficará disponível
               para outros agendamentos. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

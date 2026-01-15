@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -19,7 +19,7 @@ import { Search, Calendar as CalendarIcon, Clock, Loader2, User, Phone } from "l
 import { PlainLead, TimeSlot } from "@/types";
 import { createAppointment, getAvailableSlots } from "@/app/actions/appointments";
 import { getLeads } from "@/app/actions/leads";
-import { cn } from "@/lib/utils";
+import { cn, formatPhone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -166,17 +166,6 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const formatPhone = (phone: string) => {
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length === 11) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-    }
-    if (digits.length === 10) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    }
-    return phone;
   };
 
   // Desabilitar datas no passado e fins de semana
