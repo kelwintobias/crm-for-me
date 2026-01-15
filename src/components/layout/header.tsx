@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap, Plus, Search, Bell, Calendar } from "lucide-react";
+import { Plus, Search, Bell, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./user-menu";
 import Image from "next/image";
