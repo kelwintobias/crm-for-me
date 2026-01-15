@@ -3,7 +3,6 @@
 import {
   Bar,
   BarChart,
-  ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip,
@@ -11,6 +10,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SafeChartContainer } from "@/components/ui/safe-chart-container";
 
 interface RevenueChartProps {
   data: Array<{
@@ -42,57 +42,56 @@ export function RevenueChart({ data }: RevenueChartProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="pl-2">
-        <div className="h-[300px] w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-            <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="name"
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
-              />
-              <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  borderColor: "hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-                formatter={(value) => [formatCurrency(Number(value)), ""]}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-              />
-              <Legend
-                wrapperStyle={{ paddingTop: "20px" }}
-                formatter={(value) => (
-                  <span className="text-sm text-muted-foreground">{value}</span>
-                )}
-              />
-              <Bar
-                dataKey="unico"
-                name="Plano Unico"
-                fill="#adfa1d"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={50}
-              />
-              <Bar
-                dataKey="mensal"
-                name="Plano Mensal"
-                fill="#2563eb"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={50}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {/* PERF FIX: SafeChartContainer previne erros de dimensões negativas */}
+        <SafeChartContainer height={300} minHeight={200}>
+          <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis
+              dataKey="name"
+              stroke="#888888"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              stroke="#888888"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+            />
+            <Tooltip
+              cursor={{ fill: "rgba(255,255,255,0.05)" }}
+              contentStyle={{
+                backgroundColor: "hsl(var(--card))",
+                borderColor: "hsl(var(--border))",
+                borderRadius: "8px",
+              }}
+              formatter={(value) => [formatCurrency(Number(value)), ""]}
+              labelStyle={{ color: "hsl(var(--foreground))" }}
+            />
+            <Legend
+              wrapperStyle={{ paddingTop: "20px" }}
+              formatter={(value) => (
+                <span className="text-sm text-muted-foreground">{value}</span>
+              )}
+            />
+            <Bar
+              dataKey="unico"
+              name="Plano Unico"
+              fill="#adfa1d"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={50}
+            />
+            <Bar
+              dataKey="mensal"
+              name="Plano Mensal"
+              fill="#2563eb"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={50}
+            />
+          </BarChart>
+        </SafeChartContainer>
       </CardContent>
     </Card>
   );

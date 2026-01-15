@@ -1,7 +1,8 @@
 "use client";
 
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Cell, Pie, PieChart, Tooltip, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SafeChartContainer } from "@/components/ui/safe-chart-container";
 
 interface SourceDistributionChartProps {
   data: Array<{
@@ -46,53 +47,52 @@ export function SourceDistributionChart({ data }: SourceDistributionChartProps) 
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={90}
-                fill="#8884d8"
-                paddingAngle={5}
-                dataKey="value"
-                label={({ percent }: { percent?: number }) =>
-                  `${((percent || 0) * 100).toFixed(0)}%`
-                }
-                labelLine={false}
-              >
-                {data.map((entry) => (
-                  <Cell
-                    key={`cell-${entry.source}`}
-                    fill={COLORS[entry.source] || "#888888"}
-                    className="stroke-background"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  borderColor: "hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-                formatter={(value, name) => [
-                  `${value} leads`,
-                  String(name),
-                ]}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                formatter={(value) => (
-                  <span className="text-sm text-muted-foreground">{value}</span>
-                )}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        {/* PERF FIX: SafeChartContainer previne erros de dimensões negativas */}
+        <SafeChartContainer height={300} minHeight={200}>
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={90}
+              fill="#8884d8"
+              paddingAngle={5}
+              dataKey="value"
+              label={({ percent }: { percent?: number }) =>
+                `${((percent || 0) * 100).toFixed(0)}%`
+              }
+              labelLine={false}
+            >
+              {data.map((entry) => (
+                <Cell
+                  key={`cell-${entry.source}`}
+                  fill={COLORS[entry.source] || "#888888"}
+                  className="stroke-background"
+                  strokeWidth={2}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--card))",
+                borderColor: "hsl(var(--border))",
+                borderRadius: "8px",
+              }}
+              formatter={(value, name) => [
+                `${value} leads`,
+                String(name),
+              ]}
+            />
+            <Legend
+              verticalAlign="bottom"
+              height={36}
+              formatter={(value) => (
+                <span className="text-sm text-muted-foreground">{value}</span>
+              )}
+            />
+          </PieChart>
+        </SafeChartContainer>
       </CardContent>
     </Card>
   );
