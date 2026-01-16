@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { getLeads, getCurrentUser } from "./actions/leads";
 import { getDashboardMetrics } from "./actions/dashboard";
 import { getContracts } from "./actions/contracts";
@@ -8,12 +9,31 @@ import { getAllAppointments } from "./actions/appointments";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 export default async function HomePage() {
-  // Obtem o usuario autenticado do Prisma
+  // Verificação primária: Supabase auth (sincronizado com middleware)
+  const supabase = await createClient();
+  const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+
+  if (!supabaseUser) {
+    redirect("/login");
+  }
+
+  // Obtem o usuario do Prisma (cria se não existir)
   let user;
   try {
     user = await getCurrentUser();
-  } catch {
-    redirect("/login");
+  } catch (error) {
+    // Log do erro para debug, mas não redireciona para evitar loop
+    console.error("Erro ao obter usuário do Prisma:", error);
+    // Fallback: usar dados do Supabase diretamente
+    user = {
+      id: supabaseUser.id,
+      email: supabaseUser.email!,
+      name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "Usuário",
+      role: "VENDEDOR" as const,
+      commissionRate: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
   // Busca paralela de dados para performance
@@ -39,12 +59,10 @@ export default async function HomePage() {
   const contracts = contractsResult.data || [];
   const fixedCosts = fixedCostsResult.data || [];
 
-  const plainUser = user
-    ? {
-      ...user,
-      commissionRate: Number(user.commissionRate),
-    }
-    : null;
+  const plainUser = {
+    ...user,
+    commissionRate: Number(user.commissionRate),
+  };
 
   // Dados de metricas de contratos
   const contractMetrics = contractMetricsResult.data || {
@@ -115,11 +133,6 @@ export default async function HomePage() {
       noShowToday: 0,
     },
   };
-
-  if (!plainUser) {
-    // Fallback de segurança, embora o redirect deva ocorrer antes
-    redirect("/login");
-  }
 
   return (
     <DashboardView
