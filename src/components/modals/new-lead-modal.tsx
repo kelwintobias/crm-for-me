@@ -22,7 +22,7 @@ import {
 import { createLead } from "@/app/actions/leads";
 import { toast } from "sonner";
 import { Loader2, UserPlus, Sparkles, Columns3 } from "lucide-react";
-import type { LeadSource } from "@prisma/client";
+import type { LeadSource, PipelineStage } from "@prisma/client";
 
 // Validação de telefone brasileiro (10-11 dígitos)
 function validatePhone(phone: string): string | null {
@@ -43,7 +43,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<LeadSource>("INSTAGRAM");
-  const [stage, setStage] = useState<"NOVOS" | "EM_CONTATO">("NOVOS");
+  const [stage, setStage] = useState<PipelineStage>("NOVO_LEAD");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
@@ -72,7 +72,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       onOpenChange(false);
       (e.target as HTMLFormElement).reset();
       setSource("INSTAGRAM");
-      setStage("NOVOS");
+      setStage("NOVO_LEAD");
       setPhone("");
       setPhoneError(null);
       if (onSuccess) {
@@ -134,13 +134,12 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
               required
               disabled={loading}
               inputMode="numeric"
-              className={`h-11 bg-white/[0.03] focus:border-brand-accent/50 input-glow font-mono transition-all ${
-                phoneError
-                  ? "border-red-500/50 focus:border-red-500"
-                  : phone.length >= 10
-                    ? "border-emerald-500/50"
-                    : "border-white/10"
-              }`}
+              className={`h-11 bg-white/[0.03] focus:border-brand-accent/50 input-glow font-mono transition-all ${phoneError
+                ? "border-red-500/50 focus:border-red-500"
+                : phone.length >= 10
+                  ? "border-emerald-500/50"
+                  : "border-white/10"
+                }`}
             />
             {phoneError ? (
               <p className="text-xs text-red-400">{phoneError}</p>
@@ -168,16 +167,28 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
                       Instagram
                     </span>
                   </SelectItem>
-                  <SelectItem value="GOOGLE" className="focus:bg-brand-accent/20">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      Google
-                    </span>
-                  </SelectItem>
                   <SelectItem value="INDICACAO" className="focus:bg-brand-accent/20">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Indicacao
+                      Indicação
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="PAGINA_PARCEIRA" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500" />
+                      Página Parceira
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="INFLUENCER" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-violet-500" />
+                      Influenciador
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="ANUNCIO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      Anúncio
                     </span>
                   </SelectItem>
                   <SelectItem value="OUTRO" className="focus:bg-brand-accent/20">
@@ -195,21 +206,45 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
                 <Columns3 className="w-3.5 h-3.5" />
                 Coluna
               </Label>
-              <Select value={stage} onValueChange={(v) => setStage(v as "NOVOS" | "EM_CONTATO")}>
+              <Select value={stage} onValueChange={(v) => setStage(v as PipelineStage)}>
                 <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
                   <SelectValue placeholder="Selecione a coluna" />
                 </SelectTrigger>
                 <SelectContent className="glass-strong border-white/10">
-                  <SelectItem value="NOVOS" className="focus:bg-brand-accent/20">
+                  <SelectItem value="NOVO_LEAD" className="focus:bg-brand-accent/20">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      Novos
+                      Novo Lead
                     </span>
                   </SelectItem>
-                  <SelectItem value="EM_CONTATO" className="focus:bg-brand-accent/20">
+                  <SelectItem value="EM_NEGOCIACAO" className="focus:bg-brand-accent/20">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      Em Contato
+                      Em Negociação
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="AGENDADO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-violet-500" />
+                      Agendado
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="EM_ATENDIMENTO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500" />
+                      Em Atendimento
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="POS_VENDA" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Pós-Venda
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="FINALIZADO" className="focus:bg-brand-accent/20">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Finalizado
                     </span>
                   </SelectItem>
                 </SelectContent>

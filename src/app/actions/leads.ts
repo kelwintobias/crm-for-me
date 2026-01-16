@@ -25,8 +25,12 @@ function serializeLead(lead: Lead) {
 // Qualquer alteracao de preco deve ser feita APENAS aqui
 const PLAN_PRICES: Record<PlanType, number> = {
   INDEFINIDO: 0,
-  PLANO_UNICO: 35.90,
-  PLANO_MENSAL: 45.90,
+  INTERMEDIARIO: 25.00,
+  AVANCADO: 40.00,
+  ELITE: 50.00,
+  PRO_PLUS: 75.00,
+  ULTRA_PRO: 100.00,
+  EVOLUTION: 150.00,
 };
 
 // Funcao helper para obter o valor do plano
@@ -42,8 +46,8 @@ function getPlanValue(plan: PlanType): Decimal {
 const createLeadSchema = z.object({
   name: z.string().min(1, "Nome e obrigatorio"),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos"),
-  source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]),
-  plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
+  source: z.enum(["INSTAGRAM", "INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "OUTRO"]),
+  plan: z.enum(["INDEFINIDO", "INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"]).optional(),
   stage: z.enum(["NOVO_LEAD", "EM_NEGOCIACAO"]).optional(), // Apenas colunas iniciais permitidas
 });
 
@@ -51,10 +55,18 @@ const updateLeadSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1, "Nome e obrigatorio").optional(),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos").optional(),
-  source: z.enum(["INSTAGRAM", "GOOGLE", "INDICACAO", "OUTRO"]).optional(),
-  plan: z.enum(["INDEFINIDO", "PLANO_UNICO", "PLANO_MENSAL"]).optional(),
+  source: z.enum(["INSTAGRAM", "INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "OUTRO"]).optional(),
+  plan: z.enum(["INDEFINIDO", "INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"]).optional(),
   stage: z.enum(["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"]).optional(),
   notes: z.string().nullable().optional(),
+  // Campos do "Espelho da Planilha"
+  email: z.string().email("Email invalido").nullable().optional().or(z.literal("")),
+  contractDate: z.string().nullable().optional(),
+  instagram: z.string().nullable().optional(),
+  cpf: z.string().nullable().optional(),
+  packageType: z.string().nullable().optional(),
+  addOns: z.string().nullable().optional(),
+  termsAccepted: z.boolean().optional(),
 });
 
 // ============================================
@@ -145,17 +157,24 @@ export async function updateLead(data: {
   plan?: PlanType;
   stage?: PipelineStage;
   notes?: string | null;
+  // Campos do "Espelho da Planilha"
+  email?: string | null;
+  contractDate?: string | null;
+  instagram?: string | null;
+  cpf?: string | null;
+  packageType?: string | null;
+  addOns?: string | null;
+  termsAccepted?: boolean;
 }) {
   try {
-    const user = await getCurrentUser();
+    await getCurrentUser();
 
     const validatedData = updateLeadSchema.parse(data);
 
-    // Verifica se o lead pertence ao usuario
+    // Verifica se o lead existe
     const existingLead = await prisma.lead.findFirst({
       where: {
         id: validatedData.id,
-        userId: user.id,
         deletedAt: null,
       },
     });
@@ -170,6 +189,16 @@ export async function updateLead(data: {
       ...(validatedData.phone && { phone: validatedData.phone.replace(/\D/g, "") }),
       ...(validatedData.source && { source: validatedData.source }),
       ...(validatedData.notes !== undefined && { notes: validatedData.notes }),
+      // Campos do "Espelho da Planilha"
+      ...(validatedData.email !== undefined && { email: validatedData.email || null }),
+      ...(validatedData.contractDate !== undefined && {
+        contractDate: validatedData.contractDate ? new Date(validatedData.contractDate) : null,
+      }),
+      ...(validatedData.instagram !== undefined && { instagram: validatedData.instagram || null }),
+      ...(validatedData.cpf !== undefined && { cpf: validatedData.cpf || null }),
+      ...(validatedData.packageType !== undefined && { packageType: validatedData.packageType || null }),
+      ...(validatedData.addOns !== undefined && { addOns: validatedData.addOns || null }),
+      ...(validatedData.termsAccepted !== undefined && { termsAccepted: validatedData.termsAccepted }),
     };
 
     // LOGICA DE CONSISTENCIA: Se o stage mudar para VENDIDO_*
@@ -205,12 +234,11 @@ export async function updateLead(data: {
 
 export async function updateLeadStage(id: string, stage: PipelineStage) {
   try {
-    const user = await getCurrentUser();
+    await getCurrentUser();
 
     const existingLead = await prisma.lead.findFirst({
       where: {
         id,
-        userId: user.id,
         deletedAt: null,
       },
     });
@@ -240,12 +268,11 @@ export async function updateLeadStage(id: string, stage: PipelineStage) {
 
 export async function deleteLead(id: string) {
   try {
-    const user = await getCurrentUser();
+    await getCurrentUser();
 
     const existingLead = await prisma.lead.findFirst({
       where: {
         id,
-        userId: user.id,
         deletedAt: null,
       },
     });
@@ -272,11 +299,10 @@ export async function deleteLead(id: string) {
 
 export async function getLeads() {
   try {
-    const user = await getCurrentUser();
+    await getCurrentUser();
 
     const leads = await prisma.lead.findMany({
       where: {
-        userId: user.id,
         deletedAt: null,
       },
       orderBy: {

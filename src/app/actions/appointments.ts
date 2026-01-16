@@ -481,3 +481,87 @@ export async function getAppointmentHistory(appointmentId: string) {
     return { success: false, error: "Erro ao buscar histórico" };
   }
 }
+
+// Buscar todos os agendamentos (para métricas do dashboard)
+export async function getAllAppointments() {
+  try {
+    await getCurrentUser();
+
+    const appointments = await prisma.appointment.findMany({
+      select: {
+        id: true,
+        scheduledAt: true,
+        status: true,
+        duration: true,
+        canceledAt: true,
+        createdAt: true,
+      },
+      orderBy: { scheduledAt: "desc" },
+    });
+
+    return {
+      success: true,
+      data: appointments.map((apt) => ({
+        id: apt.id,
+        scheduledAt: apt.scheduledAt.toISOString(),
+        status: apt.status,
+        duration: apt.duration,
+        canceledAt: apt.canceledAt?.toISOString() || null,
+        createdAt: apt.createdAt.toISOString(),
+      })),
+    };
+  } catch (error) {
+    console.error("Erro ao buscar agendamentos:", error);
+    return { success: false, error: "Erro ao buscar agendamentos" };
+  }
+}
+
+// Buscar um agendamento específico por ID
+export async function getAppointmentById(appointmentId: string) {
+  try {
+    const user = await getCurrentUser();
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        lead: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            userId: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      return { success: false, error: "Agendamento não encontrado" };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: appointment.id,
+        leadId: appointment.lead.id,
+        leadName: appointment.lead.name,
+        leadPhone: appointment.lead.phone,
+        vendedora: appointment.user.name || appointment.user.email,
+        scheduledAt: appointment.scheduledAt.toISOString(),
+        duration: appointment.duration,
+        status: appointment.status,
+        notes: appointment.notes,
+        isOwner: appointment.lead.userId === user.id,
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao buscar agendamento:", error);
+    return { success: false, error: "Erro ao buscar agendamento" };
+  }
+}

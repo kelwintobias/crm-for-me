@@ -14,15 +14,21 @@ datasource db {
 
 enum LeadSource {
   INSTAGRAM
-  GOOGLE
   INDICACAO
+  PAGINA_PARCEIRA
+  INFLUENCER
+  ANUNCIO
   OUTRO
 }
 
 enum PlanType {
   INDEFINIDO
-  PLANO_UNICO
-  PLANO_MENSAL
+  INTERMEDIARIO
+  AVANCADO
+  ELITE
+  PRO_PLUS
+  ULTRA_PRO
+  EVOLUTION
 }
 
 enum PipelineStage {
@@ -53,6 +59,22 @@ enum HistoryAction {
   COMPLETED
 }
 
+enum ContractSource {
+  ANUNCIO
+  INDICACAO
+  INFLUENCIADOR
+  PARCEIRO
+}
+
+enum ContractPackage {
+  INTERMEDIARIO
+  AVANCADO
+  ELITE
+  PRO_PLUS
+  ULTRA_PRO
+  EVOLUTION
+}
+
 // --------------------------------------
 // MODELS
 // --------------------------------------
@@ -69,6 +91,8 @@ model User {
   leads              Lead[]                 @relation("UserLeads")
   appointments       Appointment[]          @relation("UserAppointments")
   appointmentHistory AppointmentHistory[]   @relation("UserAppointmentHistory")
+  contracts          Contract[]             @relation("UserContracts")
+  fixedCosts         FixedCost[]            @relation("UserFixedCosts")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,6 +114,15 @@ model Lead {
 
   stage     PipelineStage @default(NOVO_LEAD)
   notes     String?  @db.Text
+
+  // Campos do "Espelho da Planilha"
+  email          String?       // Email do cliente
+  contractDate   DateTime?     // Data da venda/contrato
+  instagram      String?       // Link do Instagram
+  cpf            String?       // CPF do cliente
+  packageType    String?       // Pacote adquirido (ex: Ultra, Mensal)
+  addOns         String?       // Adicionais
+  termsAccepted  Boolean       @default(false) // Declaracao/termos aceitos
 
   userId    String
   user      User     @relation("UserLeads", fields: [userId], references: [id])
@@ -160,4 +193,60 @@ model AppointmentHistory {
 
   @@index([appointmentId])
   @@map("appointment_history")
+}
+
+model Contract {
+  id            String   @id @default(uuid())
+  
+  // Dados do cliente
+  clientName    String
+  email         String?
+  whatsapp      String
+  instagram     String?
+  cpf           String?
+  
+  // Detalhes do contrato
+  contractDate  DateTime
+  source        ContractSource
+  package       ContractPackage
+  addons        String[]   // Lista de adicionais selecionados
+  termsAccepted Boolean    @default(false)
+  
+  // Valor calculado automaticamente no backend
+  totalValue    Decimal    @db.Decimal(10, 2)
+  
+  // Relacionamento
+  userId        String
+  user          User       @relation("UserContracts", fields: [userId], references: [id])
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([userId])
+  @@index([contractDate])
+  @@map("contracts")
+}
+
+model FixedCost {
+  id          String   @id @default(uuid())
+  
+  // Detalhes do custo
+  date        DateTime // Data do custo
+  type        String   // Tipo (ex: Despesa)
+  category    String   // Categoria (ex: automação de mensagens)
+  description String   // Descrição (ex: Manychat)
+  value       Decimal  @db.Decimal(10, 2) // Valor em reais
+  month       Int      // Mês (1-12)
+  year        Int      // Ano
+  
+  // Relacionamento
+  userId      String
+  user        User     @relation("UserFixedCosts", fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([date])
+  @@map("fixed_costs")
 }

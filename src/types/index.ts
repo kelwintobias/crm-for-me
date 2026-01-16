@@ -70,8 +70,12 @@ export interface DashboardMetrics {
 // Este objeto e apenas para exibicao e referencia
 export const PLAN_PRICES = {
   INDEFINIDO: 0,
-  PLANO_UNICO: 35.90,
-  PLANO_MENSAL: 45.90,
+  INTERMEDIARIO: 25.00,
+  AVANCADO: 40.00,
+  ELITE: 50.00,
+  PRO_PLUS: 75.00,
+  ULTRA_PRO: 100.00,
+  EVOLUTION: 150.00,
 } as const;
 
 // ============================================
@@ -89,25 +93,33 @@ export const STAGE_LABELS: Record<PipelineStage, string> = {
 
 export const SOURCE_LABELS: Record<LeadSource, string> = {
   INSTAGRAM: "Instagram",
-  GOOGLE: "Google",
-  INDICACAO: "Indicacao",
+  INDICACAO: "Indicação",
+  PAGINA_PARCEIRA: "Página Parceira",
+  INFLUENCER: "Influenciador",
+  ANUNCIO: "Anúncio",
   OUTRO: "Outro",
 };
 
 export const PLAN_LABELS: Record<PlanType, string> = {
   INDEFINIDO: "Indefinido",
-  PLANO_UNICO: "Plano Unico",
-  PLANO_MENSAL: "Plano Mensal",
+  INTERMEDIARIO: "Intermediário",
+  AVANCADO: "Avançado",
+  ELITE: "Elite",
+  PRO_PLUS: "Pro Plus",
+  ULTRA_PRO: "Ultra Pro",
+  EVOLUTION: "Evolution",
 };
 
 // Cores das badges por origem
 export const SOURCE_BADGE_VARIANTS: Record<
   LeadSource,
-  "instagram" | "google" | "indicacao" | "secondary"
+  "instagram" | "indicacao" | "parceira" | "influencer" | "anuncio" | "secondary"
 > = {
   INSTAGRAM: "instagram",
-  GOOGLE: "google",
   INDICACAO: "indicacao",
+  PAGINA_PARCEIRA: "parceira",
+  INFLUENCER: "influencer",
+  ANUNCIO: "anuncio",
   OUTRO: "secondary",
 };
 
