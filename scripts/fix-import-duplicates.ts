@@ -178,7 +178,7 @@ function mergeRecords(records: Record<string, string>[]): MergedRecord[] {
     // Agrupar por email ou whatsapp (identificador único do cliente)
     const groups = new Map<string, Record<string, string>[]>();
 
-    for (const record of records) {
+    for (const record of records as any[]) {
         const email = record["EMAIL"] || "";
         const whatsapp = cleanPhone(record["WHATSAPP"] || record["TELEFONE"] || record["PHONE"] || "");
         const name = record["NOME"] || record["NAME"] || record["CLIENTE"] || "";

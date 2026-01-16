@@ -17,27 +17,27 @@ function mapOrigemToContractSource(origem: string): ContractSource {
 
   // Influenciador
   if (origemNormalizada.includes('video de influenciadores') ||
-      origemNormalizada.includes('vídeo de influenciadores') ||
-      origemNormalizada.includes('vídeos de influenciadores')) {
+    origemNormalizada.includes('vídeo de influenciadores') ||
+    origemNormalizada.includes('vídeos de influenciadores')) {
     return 'INFLUENCIADOR'
   }
 
   // Página Parceira → Parceiro
   if (origemNormalizada.includes('página parceira') ||
-      origemNormalizada.includes('pagina parceira')) {
+    origemNormalizada.includes('pagina parceira')) {
     return 'PARCEIRO'
   }
 
   // Anúncios e campanhas
   if (origemNormalizada.includes('anúncio nas redes sociais') ||
-      origemNormalizada.includes('anuncio nas redes sociais') ||
-      origemNormalizada.includes('meta ads') ||
-      origemNormalizada.includes('- ads') ||
-      origemNormalizada.includes('interesse -') ||
-      origemNormalizada.includes('conta reserva') ||
-      origemNormalizada === 'linktree' ||
-      origemNormalizada === 'instagram' ||
-      origemNormalizada === 'site') {
+    origemNormalizada.includes('anuncio nas redes sociais') ||
+    origemNormalizada.includes('meta ads') ||
+    origemNormalizada.includes('- ads') ||
+    origemNormalizada.includes('interesse -') ||
+    origemNormalizada.includes('conta reserva') ||
+    origemNormalizada === 'linktree' ||
+    origemNormalizada === 'instagram' ||
+    origemNormalizada === 'site') {
     return 'ANUNCIO'
   }
 
@@ -75,7 +75,7 @@ async function main() {
       trim: true
     })
 
-    for (const record of records) {
+    for (const record of records as any[]) {
       const email = record['EMAIL '] || record['EMAIL'] || ''
       const phone = record['WHATSAPP'] || ''
       const origem = record['ORIGEM'] || ''

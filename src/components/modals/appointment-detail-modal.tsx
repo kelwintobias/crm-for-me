@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -95,6 +95,57 @@ export function AppointmentDetailModal({
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
+  const loadAppointmentDetails = useCallback(async () => {
+    if (!appointmentId) return;
+
+    setIsLoading(true);
+    try {
+      // Busca diretamente pelo ID do agendamento
+      const result = await getAppointmentById(appointmentId);
+
+      if (result.success && result.data) {
+        setAppointment(result.data as AppointmentDetails);
+      } else {
+        toast.error(result.error || "Agendamento não encontrado");
+      }
+    } catch {
+      toast.error("Erro ao carregar detalhes");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appointmentId]);
+
+  const loadHistory = useCallback(async () => {
+    if (!appointmentId) return;
+
+    try {
+      const result = await getAppointmentHistory(appointmentId);
+      if (result.success && result.data) {
+        setHistory(result.data);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar histórico:", error);
+    }
+  }, [appointmentId]);
+
+  const loadTimeSlots = useCallback(async () => {
+    if (!selectedDate) return;
+
+    setIsLoadingSlots(true);
+    try {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const result = await getAvailableSlots(dateStr);
+
+      if (result.success && result.data) {
+        setTimeSlots(result.data);
+      }
+    } catch {
+      toast.error("Erro ao carregar horários");
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  }, [selectedDate]);
+
   useEffect(() => {
     if (open && appointmentId) {
       loadAppointmentDetails();
@@ -108,65 +159,14 @@ export function AppointmentDetailModal({
       setTimeSlots([]);
       setSelectedSlot(null);
     }
-  }, [open, appointmentId]);
+  }, [open, appointmentId, loadAppointmentDetails, loadHistory]);
 
   // Carregar horários quando selecionar nova data
   useEffect(() => {
     if (isRescheduling && selectedDate) {
       loadTimeSlots();
     }
-  }, [selectedDate, isRescheduling]);
-
-  const loadAppointmentDetails = async () => {
-    if (!appointmentId) return;
-
-    setIsLoading(true);
-    try {
-      // Busca diretamente pelo ID do agendamento
-      const result = await getAppointmentById(appointmentId);
-
-      if (result.success && result.data) {
-        setAppointment(result.data as AppointmentDetails);
-      } else {
-        toast.error(result.error || "Agendamento não encontrado");
-      }
-    } catch (error) {
-      toast.error("Erro ao carregar detalhes");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadHistory = async () => {
-    if (!appointmentId) return;
-
-    try {
-      const result = await getAppointmentHistory(appointmentId);
-      if (result.success && result.data) {
-        setHistory(result.data);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar histórico:", error);
-    }
-  };
-
-  const loadTimeSlots = async () => {
-    if (!selectedDate) return;
-
-    setIsLoadingSlots(true);
-    try {
-      const dateStr = format(selectedDate, "yyyy-MM-dd");
-      const result = await getAvailableSlots(dateStr);
-
-      if (result.success && result.data) {
-        setTimeSlots(result.data);
-      }
-    } catch (error) {
-      toast.error("Erro ao carregar horários");
-    } finally {
-      setIsLoadingSlots(false);
-    }
-  };
+  }, [selectedDate, isRescheduling, loadTimeSlots]);
 
   const handleReschedule = async () => {
     if (!appointmentId || !selectedSlot) {
@@ -189,7 +189,7 @@ export function AppointmentDetailModal({
       } else {
         toast.error(result.error || "Erro ao remarcar");
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao remarcar agendamento");
     } finally {
       setIsLoading(false);
@@ -213,7 +213,7 @@ export function AppointmentDetailModal({
       } else {
         toast.error(result.error || "Erro ao cancelar");
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao cancelar agendamento");
     } finally {
       setIsCanceling(false);

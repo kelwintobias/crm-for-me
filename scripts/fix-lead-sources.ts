@@ -11,13 +11,13 @@ function mapOrigemToSource(origem: string): LeadSource {
 
   // Mapeamento principal conforme solicitado pelo usuário
   if (origemNormalizada.includes('anúncio nas redes sociais') ||
-      origemNormalizada.includes('anuncio nas redes sociais')) {
+    origemNormalizada.includes('anuncio nas redes sociais')) {
     return 'ANUNCIO'
   }
 
   if (origemNormalizada.includes('video de influenciadores') ||
-      origemNormalizada.includes('vídeo de influenciadores') ||
-      origemNormalizada.includes('vídeos de influenciadores')) {
+    origemNormalizada.includes('vídeo de influenciadores') ||
+    origemNormalizada.includes('vídeos de influenciadores')) {
     return 'INFLUENCER'
   }
 
@@ -26,7 +26,7 @@ function mapOrigemToSource(origem: string): LeadSource {
   }
 
   if (origemNormalizada.includes('página parceira') ||
-      origemNormalizada.includes('pagina parceira')) {
+    origemNormalizada.includes('pagina parceira')) {
     return 'PAGINA_PARCEIRA'
   }
 
@@ -37,9 +37,9 @@ function mapOrigemToSource(origem: string): LeadSource {
 
   // Campanhas de Meta Ads e outras campanhas de anúncios
   if (origemNormalizada.includes('meta ads') ||
-      origemNormalizada.includes('- ads') ||
-      origemNormalizada.includes('interesse -') ||
-      origemNormalizada.includes('conta reserva')) {
+    origemNormalizada.includes('- ads') ||
+    origemNormalizada.includes('interesse -') ||
+    origemNormalizada.includes('conta reserva')) {
     return 'ANUNCIO'
   }
 
@@ -55,8 +55,8 @@ function mapOrigemToSource(origem: string): LeadSource {
 
   // Origens indefinidas
   if (origemNormalizada.includes('indefinida') ||
-      origemNormalizada.includes('inefinida') ||
-      origemNormalizada === '') {
+    origemNormalizada.includes('inefinida') ||
+    origemNormalizada === '') {
     return 'OUTRO'
   }
 
@@ -96,7 +96,7 @@ async function main() {
       trim: true
     })
 
-    for (const record of records) {
+    for (const record of records as any[]) {
       const email = record['EMAIL '] || record['EMAIL'] || ''
       const phone = record['WHATSAPP'] || ''
       const origem = record['ORIGEM'] || ''

@@ -148,7 +148,7 @@ async function main() {
       trim: true
     }) as CSVRow[]
 
-    for (const row of records) {
+    for (const row of records as any[]) {
       const email = row['EMAIL '] || row['EMAIL'] || ''
       const phone = row['WHATSAPP'] || ''
       const rawData = row['DATA'] || ''

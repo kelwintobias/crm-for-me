@@ -218,7 +218,7 @@ export async function getContractMetrics() {
 
         const addonStats = new Map<string, { count: number; revenue: number }>();
         let contractsWithAddons = 0;
-        let totalAddonsRevenue = 0;
+
 
         allContracts.forEach((contract) => {
             if (contract.addons.length > 0) {

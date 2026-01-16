@@ -226,7 +226,7 @@ interface DashboardViewProps {
   contractMetrics: ContractMetricsData;
 }
 
-export function DashboardView({ user, leads, contracts, fixedCosts, appointments, dashboardData, contractMetrics }: DashboardViewProps) {
+export function DashboardView({ user, leads, contracts, fixedCosts, appointments, dashboardData: _dashboardData, contractMetrics }: DashboardViewProps) {
   const router = useRouter();
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);

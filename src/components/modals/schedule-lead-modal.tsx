@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -73,7 +73,7 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
         setAllLeads(activeLeads);
         setFilteredLeads(activeLeads);
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao carregar leads");
     } finally {
       setIsLoadingLeads(false);
@@ -95,17 +95,7 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
     }
   }, [searchQuery, allLeads]);
 
-  // Carregar horários disponíveis quando selecionar data
-  useEffect(() => {
-    if (selectedDate) {
-      loadTimeSlots();
-    } else {
-      setTimeSlots([]);
-      setSelectedSlot(null);
-    }
-  }, [selectedDate]);
-
-  const loadTimeSlots = async () => {
+  const loadTimeSlots = useCallback(async () => {
     if (!selectedDate) return;
 
     setIsLoadingSlots(true);
@@ -119,13 +109,23 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
         toast.error(result.error || "Erro ao carregar horários");
         setTimeSlots([]);
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao carregar horários disponíveis");
       setTimeSlots([]);
     } finally {
       setIsLoadingSlots(false);
     }
-  };
+  }, [selectedDate]);
+
+  // Carregar horários disponíveis quando selecionar data
+  useEffect(() => {
+    if (selectedDate) {
+      loadTimeSlots();
+    } else {
+      setTimeSlots([]);
+      setSelectedSlot(null);
+    }
+  }, [selectedDate, loadTimeSlots]);
 
   const handleLeadSelect = (lead: PlainLead) => {
     setSelectedLead(lead);
@@ -161,7 +161,7 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
       } else {
         toast.error(result.error || "Erro ao criar agendamento");
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao criar agendamento");
     } finally {
       setIsSubmitting(false);

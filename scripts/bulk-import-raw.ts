@@ -227,7 +227,7 @@ async function main() {
 
         let fileSuccess = 0;
 
-        for (const row of records) {
+        for (const row of records as any[]) {
             const data = {
                 date: parseDate(row["DATA"] || row["DATE"] || row["CREATED_AT"] || ""),
                 email: row["EMAIL"],

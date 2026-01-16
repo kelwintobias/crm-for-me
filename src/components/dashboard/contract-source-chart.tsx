@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Pie, PieChart, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SafeChartContainer } from "@/components/ui/safe-chart-container";
 import { Users } from "lucide-react";
@@ -31,7 +31,6 @@ const formatCurrency = (value: number) =>
 
 export function ContractSourceChart({ data }: ContractSourceChartProps) {
     const totalContracts = data.reduce((acc, item) => acc + item.value, 0);
-    const totalRevenue = data.reduce((acc, item) => acc + item.revenue, 0);
 
     // Melhor fonte por receita
     const bestByRevenue = data.length > 0

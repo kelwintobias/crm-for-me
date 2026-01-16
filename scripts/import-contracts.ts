@@ -19,14 +19,14 @@ function mapOrigemToSource(origem: string): ContractSource {
 
   // Influenciador (Vídeo de influenciadores = Influencer)
   if (origemNormalizada.includes('video de influenciadores') ||
-      origemNormalizada.includes('vídeo de influenciadores') ||
-      origemNormalizada.includes('vídeos de influenciadores')) {
+    origemNormalizada.includes('vídeo de influenciadores') ||
+    origemNormalizada.includes('vídeos de influenciadores')) {
     return 'INFLUENCIADOR'
   }
 
   // Página Parceira → Parceiro
   if (origemNormalizada.includes('página parceira') ||
-      origemNormalizada.includes('pagina parceira')) {
+    origemNormalizada.includes('pagina parceira')) {
     return 'PARCEIRO'
   }
 
@@ -151,7 +151,7 @@ async function main() {
 
     console.log(`📄 Processando ${file}: ${records.length} registros`)
 
-    for (const row of records) {
+    for (const row of records as any[]) {
       try {
         const data = row['DATA'] || ''
         const email = row['EMAIL '] || row['EMAIL'] || ''

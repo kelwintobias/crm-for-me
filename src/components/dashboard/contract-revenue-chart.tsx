@@ -2,13 +2,11 @@
 
 import {
     Area,
-    AreaChart,
     XAxis,
     YAxis,
     Tooltip,
     CartesianGrid,
     Legend,
-    Bar,
     ComposedChart,
     Line,
 } from "recharts";

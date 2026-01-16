@@ -9,7 +9,6 @@ import {
     Target,
     Zap,
     Award,
-    AlertTriangle,
     Rocket,
 } from "lucide-react";
 

@@ -50,7 +50,7 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
         toast.error(result.error || "Erro ao carregar agendamentos");
         setAppointments([]);
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao carregar agendamentos");
       setAppointments([]);
     } finally {

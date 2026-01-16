@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Pie, PieChart, Tooltip, Legend } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SafeChartContainer } from "@/components/ui/safe-chart-container";
 
@@ -35,7 +35,7 @@ export function PackageDistributionChart({ data }: PackageDistributionChartProps
     const totalRevenue = data.reduce((acc, item) => acc + item.revenue, 0);
 
     // Top package
-    const topPackage = data.length > 0 ? data[0] : null;
+
 
     return (
         <Card className="col-span-full lg:col-span-3">
