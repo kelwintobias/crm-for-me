@@ -21,8 +21,12 @@ const SEED_CONFIG = {
 // Precos dos planos (deve espelhar o backend)
 const PLAN_PRICES: Record<PlanType, number> = {
   INDEFINIDO: 0,
-  PLANO_UNICO: 35.90,
-  PLANO_MENSAL: 45.90,
+  INTERMEDIARIO: 25.00,
+  AVANCADO: 40.00,
+  ELITE: 50.00,
+  PRO_PLUS: 75.00,
+  ULTRA_PRO: 100.00,
+  EVOLUTION: 150.00,
 };
 
 // Distribuicao realista de stages para simular um funil de vendas
@@ -74,7 +78,7 @@ function getRandomSource(): LeadSource {
     return "INSTAGRAM";
   }
 
-  const otherSources: LeadSource[] = ["GOOGLE", "INDICACAO", "OUTRO"];
+  const otherSources: LeadSource[] = ["INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "OUTRO"];
   return faker.helpers.arrayElement(otherSources);
 }
 
@@ -91,26 +95,29 @@ function getRandomDateInRange(days: number): Date {
 }
 
 function getPlanAndValueForStage(stage: SeedStage): { plan: PlanType; value: number } {
-  // REGRA DE CONSISTENCIA ESTRITA
-  // Se vendido, o plano DEVE corresponder ao tipo de venda
-  if (stage === "VENDIDO_UNICO") {
-    return { plan: "PLANO_UNICO", value: PLAN_PRICES.PLANO_UNICO };
-  }
+  // Lista de planos disponiveis (exceto INDEFINIDO)
+  const availablePlans: PlanType[] = ["INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"];
 
-  if (stage === "VENDIDO_MENSAL") {
-    return { plan: "PLANO_MENSAL", value: PLAN_PRICES.PLANO_MENSAL };
+  // REGRA DE CONSISTENCIA ESTRITA
+  // Se vendido, escolhe um plano aleatorio
+  if (stage === "VENDIDO_UNICO" || stage === "VENDIDO_MENSAL") {
+    // Planos basicos para UNICO, premium para MENSAL
+    const basicPlans: PlanType[] = ["INTERMEDIARIO", "AVANCADO"];
+    const premiumPlans: PlanType[] = ["ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"];
+
+    const plans = stage === "VENDIDO_UNICO" ? basicPlans : premiumPlans;
+    const plan = faker.helpers.arrayElement(plans);
+    return { plan, value: PLAN_PRICES[plan] };
   }
 
   // Para leads nao vendidos, simula interesse em planos
-  // ~60% Unico, ~40% Mensal (entre os que tem interesse definido)
   if (stage === "NOVOS" || stage === "EM_CONTATO") {
     // 30% ainda indefinido, 70% ja manifestou interesse
     if (Math.random() < 0.30) {
       return { plan: "INDEFINIDO", value: 0 };
     }
 
-    const isUnico = Math.random() < SEED_CONFIG.PLANO_UNICO_PERCENTAGE;
-    const plan = isUnico ? "PLANO_UNICO" : "PLANO_MENSAL";
+    const plan = faker.helpers.arrayElement(availablePlans);
     return { plan, value: PLAN_PRICES[plan] };
   }
 
@@ -120,8 +127,7 @@ function getPlanAndValueForStage(stage: SeedStage): { plan: PlanType; value: num
     return { plan: "INDEFINIDO", value: 0 };
   }
 
-  const isUnico = Math.random() < SEED_CONFIG.PLANO_UNICO_PERCENTAGE;
-  const plan = isUnico ? "PLANO_UNICO" : "PLANO_MENSAL";
+  const plan = faker.helpers.arrayElement(availablePlans);
   return { plan, value: PLAN_PRICES[plan] };
 }
 
@@ -291,19 +297,22 @@ async function main() {
     });
 
   // 6. Calcula metricas financeiras
-  const vendidosUnicos = stats.stages["VENDIDO_UNICO"] || 0;
-  const vendidosMensais = stats.stages["VENDIDO_MENSAL"] || 0;
+  const vendidosBasicos = stats.stages["VENDIDO_UNICO"] || 0;
+  const vendidosPremium = stats.stages["VENDIDO_MENSAL"] || 0;
 
-  const faturamentoUnico = vendidosUnicos * PLAN_PRICES.PLANO_UNICO;
-  const faturamentoMensal = vendidosMensais * PLAN_PRICES.PLANO_MENSAL;
-  const faturamentoTotal = faturamentoUnico + faturamentoMensal;
+  // Usa preco medio estimado para cada categoria
+  const precoMedioBasico = (PLAN_PRICES.INTERMEDIARIO + PLAN_PRICES.AVANCADO) / 2;
+  const precoMedioPremium = (PLAN_PRICES.ELITE + PLAN_PRICES.PRO_PLUS + PLAN_PRICES.ULTRA_PRO + PLAN_PRICES.EVOLUTION) / 4;
+
+  const faturamentoBasico = vendidosBasicos * precoMedioBasico;
+  const faturamentoPremium = vendidosPremium * precoMedioPremium;
+  const faturamentoTotal = faturamentoBasico + faturamentoPremium;
 
   console.log("");
   console.log("METRICAS FINANCEIRAS:");
-  console.log(`  Vendas Unicas:    ${vendidosUnicos} x R$ ${PLAN_PRICES.PLANO_UNICO.toFixed(2)} = R$ ${faturamentoUnico.toFixed(2)}`);
-  console.log(`  Vendas Mensais:   ${vendidosMensais} x R$ ${PLAN_PRICES.PLANO_MENSAL.toFixed(2)} = R$ ${faturamentoMensal.toFixed(2)}`);
+  console.log(`  Vendas Basicas:   ${vendidosBasicos} x R$ ${precoMedioBasico.toFixed(2)} = R$ ${faturamentoBasico.toFixed(2)}`);
+  console.log(`  Vendas Premium:   ${vendidosPremium} x R$ ${precoMedioPremium.toFixed(2)} = R$ ${faturamentoPremium.toFixed(2)}`);
   console.log(`  FATURAMENTO TOTAL: R$ ${faturamentoTotal.toFixed(2)}`);
-  console.log(`  MRR (Recorrente):  R$ ${faturamentoMensal.toFixed(2)}`);
 
   console.log("");
   console.log("=".repeat(50));

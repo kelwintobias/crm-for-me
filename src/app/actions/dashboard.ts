@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { subMonths, format, startOfMonth, endOfMonth } from "date-fns";
+import { subMonths, subWeeks, subDays, format, startOfMonth, endOfMonth, startOfDay, endOfDay, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // ============================================
@@ -34,12 +34,16 @@ async function getCurrentUser() {
 
 export async function getDashboardMetrics() {
   try {
-    const user = await getCurrentUser();
+    await getCurrentUser();
 
     // Periodos para comparacao
     const now = new Date();
     const lastMonthStart = startOfMonth(subMonths(now, 1));
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const fourWeeksAgo = subWeeks(now, 4);
+    const threeDaysAgo = subDays(now, 3);
 
     // Executa todas as queries em paralelo para performance
     const [
@@ -60,24 +64,30 @@ export async function getDashboardMetrics() {
       stageDistribution,
       totalLeadsCount,
       vendidosCount,
+      // Novas metricas de agendamentos
+      completedToday,
+      scheduledToday,
+      canceledToday,
+      noShowToday,
+      appointmentsByStatus,
+      appointmentsLast4Weeks,
+      leadsAguardando,
+      totalAppointments,
     ] = await Promise.all([
       // 1. KPI: Faturamento Total (soma de POS_VENDA + FINALIZADO)
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
 
-      // 2. KPI: MRR - Monthly Recurring Revenue (apenas PLANO_MENSAL em POS_VENDA/FINALIZADO)
+      // 2. KPI: MRR - Monthly Recurring Revenue (agora conta todos os leads vendidos)
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
-          plan: "PLANO_MENSAL",
           deletedAt: null,
         },
       }),
@@ -86,7 +96,6 @@ export async function getDashboardMetrics() {
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO"] },
           deletedAt: null,
         },
@@ -96,7 +105,6 @@ export async function getDashboardMetrics() {
       prisma.lead.aggregate({
         _avg: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
@@ -108,7 +116,6 @@ export async function getDashboardMetrics() {
         _count: { id: true },
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
@@ -117,7 +124,6 @@ export async function getDashboardMetrics() {
       // 6. Grafico: Evolucao de Receita (ultimos 3 meses)
       prisma.lead.findMany({
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           createdAt: { gte: subMonths(new Date(), 3) },
           deletedAt: null,
@@ -134,20 +140,17 @@ export async function getDashboardMetrics() {
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
         },
       }),
 
-      // 8. KPI Anterior: MRR do mes passado
+      // 8. KPI Anterior: MRR do mes passado (agora conta todos os leads vendidos)
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
-          plan: "PLANO_MENSAL",
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
         },
@@ -157,7 +160,6 @@ export async function getDashboardMetrics() {
       prisma.lead.aggregate({
         _sum: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO"] },
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
@@ -168,7 +170,6 @@ export async function getDashboardMetrics() {
       prisma.lead.aggregate({
         _avg: { value: true },
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
           deletedAt: null,
@@ -180,7 +181,6 @@ export async function getDashboardMetrics() {
         by: ["source"],
         _count: { id: true },
         where: {
-          userId: user.id,
           deletedAt: null,
         },
       }),
@@ -190,7 +190,6 @@ export async function getDashboardMetrics() {
         by: ["stage"],
         _count: { id: true },
         where: {
-          userId: user.id,
           deletedAt: null,
         },
       }),
@@ -198,7 +197,6 @@ export async function getDashboardMetrics() {
       // 13. Total de leads
       prisma.lead.count({
         where: {
-          userId: user.id,
           deletedAt: null,
         },
       }),
@@ -206,11 +204,69 @@ export async function getDashboardMetrics() {
       // 14. Total de vendidos
       prisma.lead.count({
         where: {
-          userId: user.id,
           stage: { in: ["POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
+
+      // 15. Atendimentos concluidos hoje
+      prisma.appointment.count({
+        where: {
+          status: "COMPLETED",
+          scheduledAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+
+      // 16. Agendados para hoje
+      prisma.appointment.count({
+        where: {
+          status: "SCHEDULED",
+          scheduledAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+
+      // 17. Cancelamentos hoje
+      prisma.appointment.count({
+        where: {
+          status: "CANCELED",
+          canceledAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+
+      // 18. No-shows hoje
+      prisma.appointment.count({
+        where: {
+          status: "NO_SHOW",
+          scheduledAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+
+      // 19. Distribuicao por status de agendamento
+      prisma.appointment.groupBy({
+        by: ["status"],
+        _count: { id: true },
+      }),
+
+      // 20. Atendimentos concluidos nas ultimas 4 semanas (para grafico por dia da semana)
+      prisma.appointment.findMany({
+        where: {
+          status: "COMPLETED",
+          scheduledAt: { gte: fourWeeksAgo },
+        },
+        select: { scheduledAt: true },
+      }),
+
+      // 21. Leads aguardando follow-up (em negociacao ha mais de 3 dias)
+      prisma.lead.count({
+        where: {
+          stage: "EM_NEGOCIACAO",
+          updatedAt: { lt: threeDaysAgo },
+          deletedAt: null,
+        },
+      }),
+
+      // 22. Total de agendamentos (para calcular taxas)
+      prisma.appointment.count(),
     ]);
 
     // Processa dados do grafico de evolucao mensal
@@ -247,9 +303,13 @@ export async function getDashboardMetrics() {
       const entry = monthlyRevenueMap.get(monthKey)!;
       const val = Number(lead.value);
 
-      if (lead.plan === "PLANO_UNICO") {
+      // Agrupa por tipo de plano (basicos vs premium)
+      const basicPlans = ["INTERMEDIARIO", "AVANCADO"];
+      const premiumPlans = ["ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"];
+
+      if (basicPlans.includes(lead.plan)) {
         entry.unico += val;
-      } else if (lead.plan === "PLANO_MENSAL") {
+      } else if (premiumPlans.includes(lead.plan)) {
         entry.mensal += val;
       }
       entry.total += val;
@@ -259,10 +319,19 @@ export async function getDashboardMetrics() {
     const revenueChartData = Array.from(monthlyRevenueMap.values());
 
     // Formata distribuicao para o PieChart
+    const PLAN_DISPLAY_LABELS: Record<string, string> = {
+      INTERMEDIARIO: "Intermediário",
+      AVANCADO: "Avançado",
+      ELITE: "Elite",
+      PRO_PLUS: "Pro Plus",
+      ULTRA_PRO: "Ultra Pro",
+      EVOLUTION: "Evolution",
+    };
+
     const distributionData = salesDistribution
       .filter((d) => d.plan !== "INDEFINIDO")
       .map((d) => ({
-        name: d.plan === "PLANO_UNICO" ? "Plano Unico" : "Plano Mensal",
+        name: PLAN_DISPLAY_LABELS[d.plan] || d.plan,
         value: d._count.id,
         revenue: Number(d._sum.value || 0),
       }));
@@ -270,8 +339,10 @@ export async function getDashboardMetrics() {
     // Formata distribuicao por origem
     const SOURCE_LABELS: Record<string, string> = {
       INSTAGRAM: "Instagram",
-      GOOGLE: "Google",
-      INDICACAO: "Indicacao",
+      INDICACAO: "Indicação",
+      PAGINA_PARCEIRA: "Página Parceira",
+      INFLUENCER: "Influenciador",
+      ANUNCIO: "Anúncio",
       OUTRO: "Outro",
     };
 
@@ -306,24 +377,76 @@ export async function getDashboardMetrics() {
       ? Math.round((vendidosCount / totalLeadsCount) * 100)
       : 0;
 
+    // Processa distribuicao por status de agendamento
+    const STATUS_LABELS: Record<string, string> = {
+      SCHEDULED: "Agendado",
+      COMPLETED: "Concluido",
+      CANCELED: "Cancelado",
+      NO_SHOW: "No-Show",
+    };
+    const STATUS_COLORS: Record<string, string> = {
+      SCHEDULED: "#3B82F6", // blue
+      COMPLETED: "#10B981", // green
+      CANCELED: "#EF4444", // red
+      NO_SHOW: "#F59E0B", // yellow
+    };
+
+    const appointmentStatusData = appointmentsByStatus.map((d) => ({
+      name: STATUS_LABELS[d.status] || d.status,
+      value: d._count.id,
+      status: d.status,
+      color: STATUS_COLORS[d.status] || "#6B7280",
+    }));
+
+    // Processa atendimentos por dia da semana
+    const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+    const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0];
+
+    appointmentsLast4Weeks.forEach((apt) => {
+      const dayIndex = getDay(apt.scheduledAt);
+      dayOfWeekCounts[dayIndex]++;
+    });
+
+    const weeklyPerformanceData = DAY_LABELS.map((day, index) => ({
+      day,
+      atendimentos: dayOfWeekCounts[index],
+    }));
+
+    // Calcula taxas de agendamento
+    const completedCount = appointmentsByStatus.find(d => d.status === "COMPLETED")?._count.id || 0;
+    const canceledCount = appointmentsByStatus.find(d => d.status === "CANCELED")?._count.id || 0;
+    const noShowCount = appointmentsByStatus.find(d => d.status === "NO_SHOW")?._count.id || 0;
+
+    const taxaConclusao = totalAppointments > 0
+      ? Math.round((completedCount / totalAppointments) * 100)
+      : 0;
+    const taxaCancelamento = totalAppointments > 0
+      ? Math.round((canceledCount / totalAppointments) * 100)
+      : 0;
+    const taxaNoShow = totalAppointments > 0
+      ? Math.round((noShowCount / totalAppointments) * 100)
+      : 0;
+
     return {
       success: true,
       data: {
         kpis: {
-          totalRevenue: Number(totalRevenueResult._sum.value || 0),
-          totalRevenuePrev: Number(prevTotalRevenueResult._sum.value || 0),
-          mrr: Number(mrrResult._sum.value || 0),
-          mrrPrev: Number(prevMrrResult._sum.value || 0),
-          pipeline: Number(pipelineResult._sum.value || 0),
-          pipelinePrev: Number(prevPipelineResult._sum.value || 0),
-          averageTicket: Number(averageTicketResult._avg.value || 0),
-          averageTicketPrev: Number(prevAverageTicketResult._avg.value || 0),
+          totalRevenue: Number(totalRevenueResult._sum?.value || 0),
+          totalRevenuePrev: Number(prevTotalRevenueResult._sum?.value || 0),
+          mrr: Number(mrrResult._sum?.value || 0),
+          mrrPrev: Number(prevMrrResult._sum?.value || 0),
+          pipeline: Number(pipelineResult._sum?.value || 0),
+          pipelinePrev: Number(prevPipelineResult._sum?.value || 0),
+          averageTicket: Number(averageTicketResult._avg?.value || 0),
+          averageTicketPrev: Number(prevAverageTicketResult._avg?.value || 0),
         },
         charts: {
           distribution: distributionData,
           revenueEvolution: revenueChartData,
           sourceDistribution: sourceData,
           funnel: funnelData,
+          appointmentsByStatus: appointmentStatusData,
+          weeklyPerformance: weeklyPerformanceData,
         },
         metrics: {
           totalLeads: totalLeadsCount,
@@ -331,6 +454,16 @@ export async function getDashboardMetrics() {
           taxaConversao,
           leadsEmContato: funnelData.find(d => d.stage === "EM_NEGOCIACAO")?.value || 0,
           leadsPerdidos: 0, // Removido conceito de "perdido" no novo fluxo
+          leadsAguardando,
+          taxaConclusao,
+          taxaCancelamento,
+          taxaNoShow,
+        },
+        dailyStats: {
+          completedToday,
+          scheduledToday,
+          canceledToday,
+          noShowToday,
         },
       },
     };
@@ -346,14 +479,13 @@ export async function getDashboardMetrics() {
 
 export async function getDetailedMetrics() {
   try {
-    const user = await getCurrentUser();
+    await getCurrentUser();
 
     // Contagem por stage
     const stageCount = await prisma.lead.groupBy({
       by: ["stage"],
       _count: { id: true },
       where: {
-        userId: user.id,
         deletedAt: null,
       },
     });
@@ -363,7 +495,6 @@ export async function getDetailedMetrics() {
       by: ["source"],
       _count: { id: true },
       where: {
-        userId: user.id,
         deletedAt: null,
       },
     });
@@ -371,14 +502,12 @@ export async function getDetailedMetrics() {
     // Taxa de conversao
     const totalLeads = await prisma.lead.count({
       where: {
-        userId: user.id,
         deletedAt: null,
       },
     });
 
     const vendidos = await prisma.lead.count({
       where: {
-        userId: user.id,
         stage: { in: ["POS_VENDA", "FINALIZADO"] },
         deletedAt: null,
       },

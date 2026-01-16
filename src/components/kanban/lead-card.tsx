@@ -95,6 +95,14 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
             </Badge>
           )}
         </div>
+
+        {/* Adicionais */}
+        {lead.addOns && (
+          <div className="mt-2 pt-2 border-t border-zinc-700/50">
+            <p className="text-[10px] text-zinc-500 mb-0.5">Adicionais</p>
+            <p className="text-xs text-zinc-400 truncate">{lead.addOns}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -109,6 +117,7 @@ export const LeadCard = memo(LeadCardInner, (prev, next) => {
     prev.lead.source === next.lead.source &&
     prev.lead.plan === next.lead.plan &&
     prev.lead.stage === next.lead.stage &&
+    prev.lead.addOns === next.lead.addOns &&
     prev.isOverlay === next.isOverlay &&
     prev.isDragging === next.isDragging
   );

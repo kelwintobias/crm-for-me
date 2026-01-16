@@ -16,10 +16,14 @@ const badgeVariants = cva(
         outline: "text-text-primary border-border",
         instagram:
           "border-transparent bg-gradient-to-r from-purple-500 to-pink-500 text-white",
-        google:
-          "border-transparent bg-blue-500 text-white",
         indicacao:
-          "border-transparent bg-green-500 text-white",
+          "border-transparent bg-emerald-500 text-white",
+        parceira:
+          "border-transparent bg-cyan-500 text-white",
+        influencer:
+          "border-transparent bg-violet-500 text-white",
+        anuncio:
+          "border-transparent bg-amber-500 text-white",
       },
     },
     defaultVariants: {

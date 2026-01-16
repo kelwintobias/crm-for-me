@@ -35,7 +35,7 @@ import {
   History,
 } from "lucide-react";
 import {
-  getWeekAppointments,
+  getAppointmentById,
   rescheduleAppointment,
   cancelAppointment,
   getAppointmentHistory,
@@ -122,18 +122,13 @@ export function AppointmentDetailModal({
 
     setIsLoading(true);
     try {
-      // Busca na semana atual
-      const today = new Date();
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay() + 1);
-
-      const result = await getWeekAppointments(format(startOfWeek, "yyyy-MM-dd"));
+      // Busca diretamente pelo ID do agendamento
+      const result = await getAppointmentById(appointmentId);
 
       if (result.success && result.data) {
-        const apt = result.data.find((a) => a.id === appointmentId);
-        if (apt) {
-          setAppointment(apt as AppointmentDetails);
-        }
+        setAppointment(result.data as AppointmentDetails);
+      } else {
+        toast.error(result.error || "Agendamento não encontrado");
       }
     } catch (error) {
       toast.error("Erro ao carregar detalhes");
