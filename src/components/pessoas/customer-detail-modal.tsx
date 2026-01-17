@@ -81,7 +81,7 @@ export function CustomerDetailModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogContent className="w-full max-w-full h-[100dvh] md:w-auto md:max-w-2xl md:h-auto md:max-h-[85vh] overflow-y-auto rounded-none md:rounded-lg">
                 <DialogHeader>
                     <div className="flex items-center justify-between">
                         <DialogTitle className="flex items-center gap-3">

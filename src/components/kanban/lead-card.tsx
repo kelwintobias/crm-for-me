@@ -56,12 +56,12 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
             onMouseDown={handleDragHandleMouseDown}
             onTouchStart={handleDragHandleTouchStart}
             className={cn(
-              "p-1.5 -ml-1 rounded cursor-grab active:cursor-grabbing",
-              "text-zinc-500 hover:text-zinc-300 hover:bg-white/5",
-              "touch-none select-none"
+              "p-2.5 -ml-1 rounded cursor-grab active:cursor-grabbing",
+              "text-zinc-500 hover:text-zinc-300 hover:bg-white/5 active:bg-white/10",
+              "touch-none select-none min-w-[44px] min-h-[44px] flex items-center justify-center"
             )}
           >
-            <GripVertical className="w-5 h-5 pointer-events-none" />
+            <GripVertical className="w-6 h-6 pointer-events-none" />
           </div>
 
           {/* Info Principal */}
@@ -74,12 +74,12 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
             </p>
           </div>
 
-          {/* Botão WhatsApp */}
+          {/* Botão WhatsApp - aumentado para mobile */}
           <button
             onClick={handleWhatsAppClick}
-            className="shrink-0 p-2 rounded-md bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white"
+            className="shrink-0 p-3 rounded-md bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white active:bg-green-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
-            <MessageCircle className="w-4 h-4" />
+            <MessageCircle className="w-5 h-5" />
           </button>
         </div>
 
