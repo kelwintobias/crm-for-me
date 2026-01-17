@@ -1,26 +1,33 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { PACKAGE_LABELS, ADDON_LABELS } from "@/lib/contract-constants";
 
 // ============================================
 // TIPOS
 // ============================================
 
 export interface PessoaData {
-    id: string;
+    id: string; // Unique key based on normalized phone/cpf
     name: string;
     phone: string;
     cpf: string | null;
     email: string | null;
-    stage: string;
+    instagram: string | null;
     source: string;
-    createdAt: string;
+
+    // Dados da última venda
+    lastPackage: string;
+    lastAddons: string[];
+    lastContractDate: string;
 
     // Campos calculados
-    tag: "CLIENTE_ATIVO" | "LEAD_FRIO";
+    tag: "CLIENTE_ATIVO";
     ltv: number;
-    lastPurchaseDate: string | null;
     contractCount: number;
+
+    // Observações (histórico de compras)
+    observacoes: string;
 
     // Para a jornada
     contracts: {
@@ -33,86 +40,94 @@ export interface PessoaData {
 }
 
 // ============================================
-// FUNÇÃO PRINCIPAL
+// FUNÇÃO PRINCIPAL - BASEADA EM CONTRATOS
 // ============================================
 
 export async function getPessoasData(): Promise<PessoaData[]> {
     try {
-        // Buscar todos os leads
-        const leads = await prisma.lead.findMany({
-            where: { deletedAt: null },
-            orderBy: { createdAt: "desc" },
-        });
-
-        // Buscar todos os contratos
+        // Buscar todos os contratos, ordenados por data (mais recente primeiro)
         const contracts = await prisma.contract.findMany({
             orderBy: { contractDate: "desc" },
         });
 
-        // Mapear leads para PessoaData com dados calculados
-        const pessoasData: PessoaData[] = leads.map((lead) => {
-            // Normalizar telefone para comparação (remover caracteres especiais)
-            const normalizedPhone = lead.phone.replace(/\D/g, "");
-            const normalizedCpf = lead.cpf?.replace(/\D/g, "") || null;
+        // Agrupar contratos por telefone/cpf normalizado
+        const customerMap = new Map<string, typeof contracts>();
 
-            // Encontrar contratos correspondentes por telefone OU cpf
-            const matchingContracts = contracts.filter((contract) => {
-                const contractPhone = contract.whatsapp.replace(/\D/g, "");
-                const contractCpf = contract.cpf?.replace(/\D/g, "") || null;
+        for (const contract of contracts) {
+            // Normalizar telefone para chave única
+            const normalizedPhone = contract.whatsapp.replace(/\D/g, "");
+            const normalizedCpf = contract.cpf?.replace(/\D/g, "") || null;
 
-                // Match por telefone
-                if (normalizedPhone && contractPhone && normalizedPhone === contractPhone) {
-                    return true;
-                }
+            // Usar telefone como chave primária, cpf como fallback
+            const key = normalizedPhone || normalizedCpf || contract.id;
 
-                // Match por CPF
-                if (normalizedCpf && contractCpf && normalizedCpf === contractCpf) {
-                    return true;
-                }
+            if (!customerMap.has(key)) {
+                customerMap.set(key, []);
+            }
+            customerMap.get(key)!.push(contract);
+        }
 
-                return false;
-            });
+        // Converter mapa para array de PessoaData
+        const pessoasData: PessoaData[] = [];
 
-            // Calcular LTV (soma de todos os valores de contratos)
-            const ltv = matchingContracts.reduce(
-                (sum: number, contract) => sum + Number(contract.totalValue),
+        for (const [key, customerContracts] of customerMap) {
+            // Contratos já estão ordenados por data desc, então o primeiro é o mais recente
+            const lastContract = customerContracts[0];
+
+            // Calcular LTV (soma de todos os valores)
+            const ltv = customerContracts.reduce(
+                (sum, c) => sum + Number(c.totalValue),
                 0
             );
 
-            // Encontrar data da última compra
-            const lastPurchaseDate = matchingContracts.length > 0
-                ? matchingContracts[0].contractDate.toISOString()
-                : null;
+            // Gerar Observações (histórico de compras)
+            const observacoes = customerContracts
+                .map((c) => {
+                    const date = new Date(c.contractDate).toLocaleDateString("pt-BR");
+                    const packageLabel = PACKAGE_LABELS[c.package as keyof typeof PACKAGE_LABELS] || c.package;
+                    const addonsLabels = c.addons
+                        .map((a) => ADDON_LABELS[a] || a)
+                        .join(", ");
 
-            // Determinar tag
-            const tag: "CLIENTE_ATIVO" | "LEAD_FRIO" = matchingContracts.length > 0
-                ? "CLIENTE_ATIVO"
-                : "LEAD_FRIO";
+                    if (addonsLabels) {
+                        return `${date} — Comprou ${packageLabel} com adicional ${addonsLabels}.`;
+                    }
+                    return `${date} — Comprou ${packageLabel}.`;
+                })
+                .join("\n");
 
-            return {
-                id: lead.id,
-                name: lead.name,
-                phone: lead.phone,
-                cpf: lead.cpf,
-                email: lead.email,
-                stage: lead.stage,
-                source: lead.source,
-                createdAt: lead.createdAt.toISOString(),
+            pessoasData.push({
+                id: key,
+                name: lastContract.clientName,
+                phone: lastContract.whatsapp,
+                cpf: lastContract.cpf,
+                email: lastContract.email,
+                instagram: lastContract.instagram,
+                source: lastContract.source,
 
-                tag,
+                lastPackage: lastContract.package,
+                lastAddons: lastContract.addons,
+                lastContractDate: lastContract.contractDate.toISOString(),
+
+                tag: "CLIENTE_ATIVO",
                 ltv,
-                lastPurchaseDate,
-                contractCount: matchingContracts.length,
+                contractCount: customerContracts.length,
+                observacoes,
 
-                contracts: matchingContracts.map((c) => ({
+                contracts: customerContracts.map((c) => ({
                     id: c.id,
                     contractDate: c.contractDate.toISOString(),
                     package: c.package,
                     addons: c.addons,
                     totalValue: Number(c.totalValue),
                 })),
-            };
-        });
+            });
+        }
+
+        // Ordenar por data da última compra (mais recente primeiro)
+        pessoasData.sort((a, b) =>
+            new Date(b.lastContractDate).getTime() - new Date(a.lastContractDate).getTime()
+        );
 
         return pessoasData;
     } catch (error) {
