@@ -137,7 +137,7 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
           <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {appointmentsByDay.map(({ date, appointments: dayAppointments }) => {
             const isToday = isSameDay(date, new Date());
 

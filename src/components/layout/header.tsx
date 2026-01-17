@@ -91,6 +91,16 @@ export function Header({ user, onNewLead, onSearchClick, onScheduleClick }: Head
               Agendar Lead
             </Button>
 
+            {/* Mobile Schedule Lead */}
+            <Button
+              onClick={onScheduleClick}
+              variant="outline"
+              size="icon"
+              className="md:hidden text-text-secondary hover:text-text-primary border-white/[0.08]"
+            >
+              <Calendar className="w-4 h-4" />
+            </Button>
+
             {/* New Lead Button */}
             <Button
               onClick={onNewLead}
