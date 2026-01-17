@@ -8,13 +8,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 import { PlainContract } from "@/components/contracts/contracts-table";
 import type { PlainFixedCost } from "@/app/actions/fixed-costs";
 import { MonthSelector } from "./month-selector";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn, formatPhone } from "@/lib/utils";
 
 // Skeleton para loading de charts
 function ChartSkeleton({ className }: { className?: string }) {
@@ -237,7 +255,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   const [isNewFixedCostModalOpen, setIsNewFixedCostModalOpen] = useState(false);
 
   // PERF FIX: Estado controlado da aba para desmontagem seletiva de componentes
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>("kanban");
 
   // Estado para filtro de meses (Visao Geral e Dashboards)
   const [selectedMonthsOverview, setSelectedMonthsOverview] = useState<string[]>([]);
@@ -250,6 +268,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   const shouldRenderContracts = useMemo(() => activeTab === "contracts", [activeTab]);
   const shouldRenderFixedCosts = useMemo(() => activeTab === "fixed-costs", [activeTab]);
   const shouldRenderDashboards = useMemo(() => activeTab === "dashboards", [activeTab]);
+  const shouldRenderPeople = useMemo(() => activeTab === "people", [activeTab]);
 
   // Helper para verificar se uma data esta dentro dos meses selecionados
   const isDateInSelectedMonths = useCallback((date: Date | string, selectedMonths: string[]) => {
@@ -692,6 +711,26 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     router.refresh();
   }, [router]);
 
+  const STAGE_LABELS_MAP: Record<string, string> = {
+    NOVO_LEAD: "Novo Lead",
+    EM_NEGOCIACAO: "Em Negociação",
+    AGENDADO: "Agendado",
+    EM_ATENDIMENTO: "Em Atendimento",
+    POS_VENDA: "Pós-Venda",
+    FINALIZADO: "Finalizado",
+  };
+
+  const STAGE_COLORS_MAP: Record<string, string> = {
+    NOVO_LEAD: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    EM_NEGOCIACAO: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    AGENDADO: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+    EM_ATENDIMENTO: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    POS_VENDA: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+    FINALIZADO: "bg-green-500/10 text-green-500 border-green-500/20",
+  };
+
+
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header
@@ -740,41 +779,69 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
       <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+            <h2 className="text-3xl font-bold tracking-tight">
+              {activeTab === 'kanban' && 'Kanban'}
+              {activeTab === 'calendar' && 'Calendário'}
+              {activeTab === 'overview' && 'Visão Geral'}
+              {activeTab === 'dashboards' && 'Dashboards'}
+              {activeTab === 'people' && 'Pessoas'}
+              {activeTab === 'contracts' && 'Contratos'}
+              {activeTab === 'fixed-costs' && 'Custos Fixos'}
+            </h2>
             <p className="text-muted-foreground">
-              Visao geral do seu pipeline de vendas
+              {activeTab === 'people' ? 'Gerencie sua base de clientes e leads' : 'Gerencie seu pipeline e atividades'}
             </p>
           </div>
         </div>
 
         {/* PERF FIX: Tabs controladas para desmontagem seletiva */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="w-full flex overflow-x-auto pb-2 gap-2 lg:grid lg:grid-cols-6 lg:pb-0 mb-4 h-auto bg-transparent p-0 lg:bg-muted lg:p-1">
-            <TabsTrigger value="overview" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
-              <LayoutDashboard className="h-4 w-4" />
-              <span className="whitespace-nowrap">Visão Geral</span>
-            </TabsTrigger>
-            <TabsTrigger value="dashboards" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
-              <BarChart3 className="h-4 w-4" />
-              <span className="whitespace-nowrap">Dashboards</span>
-            </TabsTrigger>
-            <TabsTrigger value="kanban" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
-              <Columns3 className="h-4 w-4" />
-              <span className="whitespace-nowrap">Kanban</span>
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
-              <CalendarIcon className="h-4 w-4" />
-              <span className="whitespace-nowrap">Calendário</span>
-            </TabsTrigger>
-            <TabsTrigger value="contracts" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
-              <FileText className="h-4 w-4" />
-              <span className="whitespace-nowrap">Contratos</span>
-            </TabsTrigger>
-            <TabsTrigger value="fixed-costs" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
-              <Wallet className="h-4 w-4" />
-              <span className="whitespace-nowrap">Custos Fixos</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="w-full flex items-center gap-2 mb-4 bg-transparent p-0">
+            {/* TABS PRINCIPAIS VISIVEIS */}
+            <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+              <TabsTrigger value="kanban" className="flex items-center gap-2 px-4 py-2">
+                <Columns3 className="h-4 w-4" />
+                <span className="whitespace-nowrap">Kanban</span>
+              </TabsTrigger>
+
+              <TabsTrigger value="calendar" className="flex items-center gap-2 px-4 py-2">
+                <CalendarIcon className="h-4 w-4" />
+                <span className="whitespace-nowrap">Calendário</span>
+              </TabsTrigger>
+            </div>
+
+            {/* MENU MULTIMIDIA (Hamburger) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-muted border-none hover:bg-muted/80 ml-auto">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setActiveTab("overview")} className="cursor-pointer gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Visão Geral
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab("dashboards")} className="cursor-pointer gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Dashboards
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setActiveTab("people")} className="cursor-pointer gap-2">
+                  <User className="h-4 w-4" />
+                  Pessoas
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab("fixed-costs")} className="cursor-pointer gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Custos Fixos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab("contracts")} className="cursor-pointer gap-2">
+                  <FileText className="h-4 w-4" />
+                  Contratos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {/* PERF FIX: Renderização condicional - componentes são DESMONTADOS quando não visíveis */}
           <TabsContent value="overview" className="space-y-4">
@@ -896,6 +963,71 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
           <TabsContent value="calendar" className="space-y-4">
             {shouldRenderCalendar && (
               <WeeklyCalendar onAppointmentClick={(id) => setSelectedAppointmentId(id)} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="people" className="space-y-4">
+            {shouldRenderPeople && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Lista de Pessoas</h3>
+                    <Button onClick={() => setIsNewLeadModalOpen(true)} className="bg-brand-accent text-white">
+                      <Plus className="w-4 h-4 mr-2" /> Novo Lead
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border border-white/[0.08]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/[0.08] hover:bg-transparent">
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Telefone</TableHead>
+                          <TableHead>Estágio</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead className="w-[100px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {leads.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              Nenhuma pessoa encontrada.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          leads.map((lead) => (
+                            <TableRow key={lead.id} className="border-white/[0.04] hover:bg-white/[0.02]">
+                              <TableCell className="font-medium">{lead.name}</TableCell>
+                              <TableCell className="font-mono text-xs text-muted-foreground">{formatPhone(lead.phone)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={cn("font-normal", STAGE_COLORS_MAP[lead.stage] || "bg-gray-500/10 text-gray-400 border-gray-500/20")}>
+                                  {STAGE_LABELS_MAP[lead.stage] || lead.stage}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {lead.value > 0 ? (
+                                  <span className="text-emerald-400 font-medium">
+                                    {lead.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm" onClick={() => handleSelectLead(lead)}>
+                                  Editar
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
