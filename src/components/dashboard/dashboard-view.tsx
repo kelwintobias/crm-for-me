@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus } from "lucide-react";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 import { PlainContract } from "@/components/contracts/contracts-table";
 import type { PlainFixedCost } from "@/app/actions/fixed-costs";
@@ -322,6 +322,19 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     });
     return sorted;
   }, [pessoasData, pessoasSortColumn, pessoasSortDirection]);
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const totalPages = Math.ceil(sortedPessoasData.length / itemsPerPage);
+  const paginatedPessoas = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return sortedPessoasData.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedPessoasData, currentPage, itemsPerPage]);
+
+  // Resetar para página 1 quando mudar filtros ou ordenação (opcional, mas bom UX)
+  // useEffect(() => setCurrentPage(1), [itemsPerPage]); // Já incluso na lógica de render se precisar, mas vamos manter simples.
 
   // Helper para verificar se uma data esta dentro dos meses selecionados
   const isDateInSelectedMonths = useCallback((date: Date | string, selectedMonths: string[]) => {
@@ -1091,7 +1104,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                             </TableCell>
                           </TableRow>
                         ) : (
-                          sortedPessoasData.map((pessoa) => (
+                          paginatedPessoas.map((pessoa) => (
                             <TableRow
                               key={pessoa.id}
                               className="border-white/[0.04] hover:bg-white/[0.02] cursor-pointer"
@@ -1152,6 +1165,51 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                         )}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* Paginação */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-gray-500">
+                      Página {currentPage} de {totalPages}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">Linhas por página:</span>
+                        <select
+                          className="h-8 w-[70px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          value={itemsPerPage}
+                          onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <option value={10} className="bg-zinc-900">10</option>
+                          <option value={20} className="bg-zinc-900">20</option>
+                          <option value={50} className="bg-zinc-900">50</option>
+                          <option value={100} className="bg-zinc-900">100</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

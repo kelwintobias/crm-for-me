@@ -295,9 +295,9 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
           <div className="w-[320px] opacity-95 shadow-2xl">
             <LeadCard
               lead={dragRef.current.lead}
-              onClick={() => {}}
+              onClick={() => { }}
               isOverlay
-              onDragStart={() => {}}
+              onDragStart={() => { }}
             />
           </div>
         </div>,
@@ -325,7 +325,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
         fontWeight: 'bold',
         pointerEvents: 'none'
       }}>
-        Debug Version: 0.0.7 | Native Drag
+
       </div>
     </>
   );
