@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
 import { subMonths, subWeeks, subDays, format, startOfMonth, endOfMonth, startOfDay, endOfDay, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -9,24 +8,7 @@ import { ptBR } from "date-fns/locale";
 // AUTENTICACAO
 // ============================================
 
-async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Nao autorizado");
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-  });
-
-  if (!dbUser) throw new Error("Usuario nao encontrado");
-
-  return dbUser;
-}
 
 // ============================================
 // DASHBOARD METRICS (Server Action)

@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
 import { subMonths, format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PACKAGE_LABELS, SOURCE_LABELS, ADDON_LABELS } from "@/lib/contract-constants";
@@ -11,19 +10,7 @@ import type { ContractPackage, ContractSource } from "@prisma/client";
 // AUTENTICAÇÃO
 // ============================================
 
-async function getCurrentUser() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) throw new Error("Não autorizado");
-
-    const dbUser = await prisma.user.findUnique({
-        where: { email: user.email! },
-    });
-
-    if (!dbUser) throw new Error("Usuário não encontrado");
-    return dbUser;
-}
 
 // ============================================
 // MÉTRICAS BASEADAS EM CONTRATOS
