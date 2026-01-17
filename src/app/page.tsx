@@ -6,6 +6,7 @@ import { getContracts } from "./actions/contracts";
 import { getFixedCosts } from "./actions/fixed-costs";
 import { getContractMetrics } from "./actions/contract-metrics";
 import { getAllAppointments } from "./actions/appointments";
+import { getPessoasData } from "./actions/pessoas";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 export default async function HomePage() {
@@ -37,13 +38,14 @@ export default async function HomePage() {
   }
 
   // Busca paralela de dados para performance
-  const [leadsResult, dashboardResult, contractsResult, fixedCostsResult, contractMetricsResult, appointmentsResult] = await Promise.all([
+  const [leadsResult, dashboardResult, contractsResult, fixedCostsResult, contractMetricsResult, appointmentsResult, pessoasData] = await Promise.all([
     getLeads(),
     getDashboardMetrics(),
     getContracts(),
     getFixedCosts(),
     getContractMetrics(),
     getAllAppointments(),
+    getPessoasData(),
   ]);
 
   const rawLeads = leadsResult.data || [];
@@ -143,6 +145,7 @@ export default async function HomePage() {
       appointments={appointments}
       dashboardData={dashboardData}
       contractMetrics={contractMetrics}
+      pessoasData={pessoasData}
     />
   );
 }
