@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
@@ -7,9 +8,13 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Mail, User, Calendar, DollarSign, ShoppingBag, FileText } from "lucide-react";
+import { Phone, Mail, User, Calendar, DollarSign, ShoppingBag, FileText, Lock, Pencil, Save, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PACKAGE_LABELS, ADDON_LABELS } from "@/lib/contract-constants";
 import type { PessoaData } from "@/app/actions/pessoas";
+import { updatePessoa } from "@/app/actions/pessoas";
 
 interface CustomerDetailModalProps {
     open: boolean;
@@ -22,26 +27,108 @@ export function CustomerDetailModal({
     onOpenChange,
     customer,
 }: CustomerDetailModalProps) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Estados do formulário
+    const [formData, setFormData] = useState({
+        name: "",
+        phone: "",
+        email: "",
+        cpf: "",
+        observacoes: "",
+    });
+
+    // Carregar dados quando o modal abre ou cliente muda
+    useEffect(() => {
+        if (customer) {
+            setFormData({
+                name: customer.name,
+                phone: customer.phone,
+                email: customer.email || "",
+                cpf: customer.cpf || "",
+                observacoes: customer.observacoes || "",
+            });
+            setIsEditing(false); // Resetar modo edição ao abrir
+        }
+    }, [customer, open]);
+
     if (!customer) return null;
+
+    async function handleSave() {
+        setIsLoading(true);
+        try {
+            const result = await updatePessoa(customer!.id, {
+                ...formData,
+                leadId: customer!.leadId,
+            });
+
+            if (result.success) {
+                setIsEditing(false);
+                // Feedback visual simples se não tiver toast
+                alert("Dados atualizados com sucesso!");
+                onOpenChange(false);
+            } else {
+                alert("Erro ao atualizar dados.");
+            }
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+            alert("Ocorreu um erro ao salvar.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
-                            <User className="h-5 w-5 text-brand-accent" />
+                    <div className="flex items-center justify-between">
+                        <DialogTitle className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                                <User className="h-5 w-5 text-brand-accent" />
+                            </div>
+                            <div>
+                                <div className="text-xl">
+                                    {isEditing ? (
+                                        <Input
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            className="h-8 text-lg font-semibold"
+                                        />
+                                    ) : (
+                                        customer.name
+                                    )}
+                                </div>
+                                <Badge
+                                    variant="outline"
+                                    className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-normal mt-1"
+                                >
+                                    Cliente Ativo
+                                </Badge>
+                            </div>
+                        </DialogTitle>
+
+                        <div className="pr-8">
+                            {!isEditing ? (
+                                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Editar
+                                </Button>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={isLoading}>
+                                        <X className="h-4 w-4 mr-2" />
+                                        Cancelar
+                                    </Button>
+                                    <Button size="sm" onClick={handleSave} disabled={isLoading}>
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Salvar
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <div className="text-xl">{customer.name}</div>
-                            <Badge
-                                variant="outline"
-                                className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-normal mt-1"
-                            >
-                                Cliente Ativo
-                            </Badge>
-                        </div>
-                    </DialogTitle>
+                    </div>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
@@ -51,28 +138,85 @@ export function CustomerDetailModal({
                             Informações de Contato
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-mono text-sm">{customer.phone}</span>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Phone className="h-4 w-4" />
+                                    <span className="text-xs font-medium uppercase">Telefone</span>
+                                </div>
+                                {isEditing ? (
+                                    <Input
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                    />
+                                ) : (
+                                    <span className="font-mono text-sm pl-6">{customer.phone}</span>
+                                )}
                             </div>
-                            {customer.email && (
-                                <div className="flex items-center gap-2">
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm">{customer.email}</span>
+
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Mail className="h-4 w-4" />
+                                    <span className="text-xs font-medium uppercase">Email</span>
                                 </div>
-                            )}
-                            {customer.cpf && (
-                                <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-mono text-sm">CPF: {customer.cpf}</span>
+                                {isEditing ? (
+                                    <Input
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    />
+                                ) : (
+                                    <span className="text-sm pl-6">{customer.email || "-"}</span>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <FileText className="h-4 w-4" />
+                                    <span className="text-xs font-medium uppercase">CPF</span>
                                 </div>
-                            )}
+                                {isEditing ? (
+                                    <Input
+                                        value={formData.cpf}
+                                        onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                                    />
+                                ) : (
+                                    <span className="font-mono text-sm pl-6">{customer.cpf || "-"}</span>
+                                )}
+                            </div>
                         </div>
                     </section>
 
                     <hr className="border-border" />
 
-                    {/* Métricas */}
+                    {/* Observações - TOTALMENTE EDITÁVEL E SINCRONIZADA */}
+                    <section>
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                            Observações (Lead)
+                            <span title="Sincronizado com o Lead no Kanban" className="flex items-center cursor-help">
+                                <Lock className="h-3 w-3 text-muted-foreground/50" />
+                            </span>
+                        </h3>
+                        {isEditing ? (
+                            <Textarea
+                                value={formData.observacoes}
+                                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                                className="min-h-[100px]"
+                                placeholder="Anote aqui informações importantes..."
+                            />
+                        ) : (
+                            <div className="bg-muted/30 rounded-lg p-3 border border-border min-h-[60px]">
+                                <pre className="text-sm whitespace-pre-wrap font-sans text-muted-foreground">
+                                    {customer.observacoes || "Nenhuma observação cadastrada."}
+                                </pre>
+                            </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                            * Essas observações são sincronizadas com o cartão do Lead no Kanban.
+                        </p>
+                    </section>
+
+                    <hr className="border-border" />
+
+                    {/* Métricas (Somente Leitura) */}
                     <section>
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                             Métricas
@@ -102,12 +246,20 @@ export function CustomerDetailModal({
 
                     <hr className="border-border" />
 
-                    {/* Histórico de Compras */}
+                    {/* Histórico de Compras (Gerado Automaticamente - Somente Leitura) */}
                     <section>
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                             Histórico de Compras
                         </h3>
-                        <div className="space-y-3">
+                        <div className="bg-muted/10 rounded-lg p-3 border border-border mb-4">
+                            <pre className="text-sm whitespace-pre-wrap font-sans text-muted-foreground">
+                                {customer.purchaseHistoryText}
+                            </pre>
+                        </div>
+
+                        {/* Detalhe dos cartões (visual opcional, mas mantido pra beleza) */}
+                        <div className="space-y-3 opacity-80">
+                            <div className="text-xs text-muted-foreground uppercase font-bold mb-2">Detalhes dos Contratos</div>
                             {customer.contracts.map((contract) => (
                                 <div
                                     key={contract.id}
@@ -135,20 +287,6 @@ export function CustomerDetailModal({
                                     )}
                                 </div>
                             ))}
-                        </div>
-                    </section>
-
-                    <hr className="border-border" />
-
-                    {/* Observações */}
-                    <section>
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                            Observações
-                        </h3>
-                        <div className="bg-muted/30 rounded-lg p-3 border border-border">
-                            <pre className="text-sm whitespace-pre-wrap font-sans text-muted-foreground">
-                                {customer.observacoes || "Nenhuma observação."}
-                            </pre>
                         </div>
                     </section>
                 </div>

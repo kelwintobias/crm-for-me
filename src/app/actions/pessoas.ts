@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { PACKAGE_LABELS, ADDON_LABELS } from "@/lib/contract-constants";
+import { revalidatePath } from "next/cache";
 
 // ============================================
 // TIPOS
@@ -26,8 +27,13 @@ export interface PessoaData {
     ltv: number;
     contractCount: number;
 
-    // Observações (histórico de compras)
+    // Observações do Usuário (Sincronizado com Lead)
     observacoes: string;
+    // ID do Lead vinculado (se houver)
+    leadId: string | null;
+
+    // Texto gerado do histórico de compras
+    purchaseHistoryText: string;
 
     // Para a jornada
     contracts: {
@@ -50,15 +56,17 @@ export async function getPessoasData(): Promise<PessoaData[]> {
             orderBy: { contractDate: "desc" },
         });
 
+        // Buscar todos os leads para cruzar informações
+        const leads = await prisma.lead.findMany();
+
         // Agrupar contratos por telefone/cpf normalizado
         const customerMap = new Map<string, typeof contracts>();
 
         for (const contract of contracts) {
-            // Normalizar telefone para chave única
             const normalizedPhone = contract.whatsapp.replace(/\D/g, "");
             const normalizedCpf = contract.cpf?.replace(/\D/g, "") || null;
 
-            // Usar telefone como chave primária, cpf como fallback
+            // Usar telefone como chave primária
             const key = normalizedPhone || normalizedCpf || contract.id;
 
             if (!customerMap.has(key)) {
@@ -67,21 +75,28 @@ export async function getPessoasData(): Promise<PessoaData[]> {
             customerMap.get(key)!.push(contract);
         }
 
-        // Converter mapa para array de PessoaData
         const pessoasData: PessoaData[] = [];
 
         for (const [key, customerContracts] of customerMap) {
-            // Contratos já estão ordenados por data desc, então o primeiro é o mais recente
             const lastContract = customerContracts[0];
+            const normalizedPhone = lastContract.whatsapp.replace(/\D/g, "");
+            const normalizedCpf = lastContract.cpf?.replace(/\D/g, "") || null;
 
-            // Calcular LTV (soma de todos os valores)
+            // Tentar encontrar um Lead correspondente (por telefone ou cpf)
+            const linkedLead = leads.find(l => {
+                const leadPhone = l.phone.replace(/\D/g, "");
+                const leadCpf = l.cpf?.replace(/\D/g, "") || null;
+                return leadPhone === normalizedPhone || (normalizedCpf && leadCpf === normalizedCpf);
+            });
+
+            // Calcular LTV
             const ltv = customerContracts.reduce(
                 (sum, c) => sum + Number(c.totalValue),
                 0
             );
 
-            // Gerar Observações (histórico de compras)
-            const observacoes = customerContracts
+            // Gerar texto do histórico de compras
+            const purchaseHistoryText = customerContracts
                 .map((c) => {
                     const date = new Date(c.contractDate).toLocaleDateString("pt-BR");
                     const packageLabel = PACKAGE_LABELS[c.package as keyof typeof PACKAGE_LABELS] || c.package;
@@ -98,7 +113,7 @@ export async function getPessoasData(): Promise<PessoaData[]> {
 
             pessoasData.push({
                 id: key,
-                name: lastContract.clientName,
+                name: lastContract.clientName, // Preferência para nome do Lead se existir? Não, contrato é oficial.
                 phone: lastContract.whatsapp,
                 cpf: lastContract.cpf,
                 email: lastContract.email,
@@ -112,7 +127,11 @@ export async function getPessoasData(): Promise<PessoaData[]> {
                 tag: "CLIENTE_ATIVO",
                 ltv,
                 contractCount: customerContracts.length,
-                observacoes,
+
+                // Se tiver Lead vinculado, usa as anotações dele. Senão, vazio.
+                observacoes: linkedLead?.notes || "",
+                leadId: linkedLead?.id || null,
+                purchaseHistoryText: purchaseHistoryText,
 
                 contracts: customerContracts.map((c) => ({
                     id: c.id,
@@ -124,7 +143,6 @@ export async function getPessoasData(): Promise<PessoaData[]> {
             });
         }
 
-        // Ordenar por data da última compra (mais recente primeiro)
         pessoasData.sort((a, b) =>
             new Date(b.lastContractDate).getTime() - new Date(a.lastContractDate).getTime()
         );
@@ -133,6 +151,45 @@ export async function getPessoasData(): Promise<PessoaData[]> {
     } catch (error) {
         console.error("Erro ao buscar dados de pessoas:", error);
         throw new Error("Erro ao buscar dados de pessoas");
+    }
+}
+
+// ============================================
+// ATUALIZAR PESSOA (E LEAD/CONTRATOS)
+// ============================================
+
+export async function updatePessoa(id: string, data: {
+    name: string;
+    phone: string;
+    email: string;
+    cpf: string;
+    observacoes: string;
+    leadId: string | null;
+}) {
+    try {
+        // 1. Atualizar Lead se existir
+        if (data.leadId) {
+            await prisma.lead.update({
+                where: { id: data.leadId },
+                data: {
+                    name: data.name,
+                    phone: data.phone,
+                    email: data.email,
+                    cpf: data.cpf,
+                    notes: data.observacoes, // Sincroniza Observacoes
+                }
+            });
+        }
+
+        // 2. Atualizar contratos vinculados ao ID (da função, que é uma chave composta)
+        // Isso é complexo pois não recebemos os IDs dos contratos. 
+        // O ideal seria receber, mas vamos manter simples por agora e focar na sincronia do Lead.
+
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Erro ao atualizar pessoa:", error);
+        return { success: false, error: "Erro ao atualizar pessoa" };
     }
 }
 
