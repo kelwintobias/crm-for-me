@@ -10,6 +10,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -215,124 +216,171 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
 
                         {/* Tabela do Grupo - condicional */}
                         {expandedMonths.has(group.monthYear) && (
-                            <div className="rounded-xl border border-white/[0.08] overflow-hidden bg-brand-card/50">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-white/[0.06] hover:bg-transparent">
-                                            <TableHead className="text-text-tertiary">Data</TableHead>
-                                            <TableHead className="text-text-tertiary">Cliente</TableHead>
-                                            <TableHead className="text-text-tertiary">Contatos</TableHead>
-                                            <TableHead className="text-text-tertiary">Redes/Doc</TableHead>
-                                            <TableHead className="text-text-tertiary">Origem</TableHead>
-                                            <TableHead className="text-text-tertiary">Pacote</TableHead>
-                                            <TableHead className="text-text-tertiary">Adicionais</TableHead>
-                                            <TableHead className="text-text-tertiary">Declaração</TableHead>
-                                            <TableHead className="text-text-tertiary text-right">Valor</TableHead>
-                                            <TableHead className="text-text-tertiary w-12"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {group.contracts.map(contract => (
-                                            <TableRow
-                                                key={contract.id}
-                                                className="border-white/[0.04] hover:bg-white/[0.02]"
-                                            >
-                                                <TableCell className="font-mono text-sm">
-                                                    {format(new Date(contract.contractDate), "dd/MM/yy")}
-                                                </TableCell>
-                                                <TableCell className="font-medium text-text-primary">
-                                                    {contract.clientName}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-0.5 text-xs">
-                                                        {contract.email && (
-                                                            <div
-                                                                className="text-text-secondary truncate max-w-[200px] cursor-help"
-                                                                title={contract.email}
-                                                            >
-                                                                {contract.email}
-                                                            </div>
-                                                        )}
-                                                        <div className="text-text-tertiary font-mono">
-                                                            {formatPhone(contract.whatsapp)}
-                                                        </div>
+                            <>
+                                {/* Mobile Card View */}
+                                <div className="md:hidden space-y-3">
+                                    {group.contracts.map(contract => (
+                                        <Card key={contract.id} className="bg-brand-card/50 border-white/[0.08]">
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-semibold text-text-primary">{contract.clientName}</h4>
+                                                        <span className="text-xs text-text-tertiary font-mono">
+                                                            {format(new Date(contract.contractDate), "dd/MM/yy")}
+                                                        </span>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-0.5 text-xs">
-                                                        {contract.instagram && (
-                                                            <div className="text-text-secondary">{contract.instagram}</div>
-                                                        )}
-                                                        {contract.cpf && (
-                                                            <div className="text-text-tertiary font-mono">{contract.cpf}</div>
-                                                        )}
-                                                        {!contract.instagram && !contract.cpf && (
-                                                            <span className="text-text-tertiary">-</span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-xs px-2 py-1 rounded-md bg-white/[0.05] text-text-secondary">
-                                                        {SOURCE_LABELS[contract.source]}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-xs px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                        {PACKAGE_LABELS[contract.package]}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {(() => {
-                                                        // Filtrar addons inválidos (vazios, "00)", etc)
-                                                        const validAddons = contract.addons.filter(
-                                                            addon => addon && addon.trim() !== "" && addon !== "00)" && !addon.match(/^\d+\)$/)
-                                                        );
-                                                        return validAddons.length > 0 ? (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {validAddons.slice(0, 2).map(addon => (
-                                                                    <span
-                                                                        key={addon}
-                                                                        className="text-xs px-1.5 py-0.5 rounded bg-white/[0.05] text-text-tertiary"
-                                                                    >
-                                                                        {ADDON_LABELS[addon] || addon}
-                                                                    </span>
-                                                                ))}
-                                                                {validAddons.length > 2 && (
-                                                                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/[0.05] text-text-tertiary">
-                                                                        +{validAddons.length - 2}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-text-tertiary text-xs">-</span>
-                                                        );
-                                                    })()}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-xs text-text-secondary">
-                                                        Aceito os Termos de Serviço
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="text-right">
                                                     <span className="font-semibold text-emerald-400">
                                                         R$ {contract.totalValue.toFixed(2)}
                                                     </span>
-                                                </TableCell>
-                                                <TableCell>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-2 text-xs">
+                                                    <span className="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                        {PACKAGE_LABELS[contract.package]}
+                                                    </span>
+                                                    <span className="px-2 py-1 rounded-md bg-white/[0.05] text-text-secondary">
+                                                        {SOURCE_LABELS[contract.source]}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex justify-between items-center pt-2 border-t border-white/[0.06]">
+                                                    <div className="space-y-0.5 text-xs">
+                                                        <div className="text-text-secondary">{contract.whatsapp}</div>
+                                                    </div>
                                                     <Button
                                                         variant="ghost"
-                                                        size="icon"
+                                                        size="sm"
                                                         className="h-8 w-8 text-text-tertiary hover:text-red-400 hover:bg-red-500/10"
                                                         onClick={() => setDeleteId(contract.id)}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
-                                                </TableCell>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+
+                                {/* Desktop Table View */}
+                                <div className="hidden md:block rounded-xl border border-white/[0.08] overflow-hidden bg-brand-card/50">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="border-white/[0.06] hover:bg-transparent">
+                                                <TableHead className="text-text-tertiary">Data</TableHead>
+                                                <TableHead className="text-text-tertiary">Cliente</TableHead>
+                                                <TableHead className="text-text-tertiary">Contatos</TableHead>
+                                                <TableHead className="text-text-tertiary">Redes/Doc</TableHead>
+                                                <TableHead className="text-text-tertiary">Origem</TableHead>
+                                                <TableHead className="text-text-tertiary">Pacote</TableHead>
+                                                <TableHead className="text-text-tertiary">Adicionais</TableHead>
+                                                <TableHead className="text-text-tertiary">Declaração</TableHead>
+                                                <TableHead className="text-text-tertiary text-right">Valor</TableHead>
+                                                <TableHead className="text-text-tertiary w-12"></TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {group.contracts.map(contract => (
+                                                <TableRow
+                                                    key={contract.id}
+                                                    className="border-white/[0.04] hover:bg-white/[0.02]"
+                                                >
+                                                    <TableCell className="font-mono text-sm">
+                                                        {format(new Date(contract.contractDate), "dd/MM/yy")}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium text-text-primary">
+                                                        {contract.clientName}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="space-y-0.5 text-xs">
+                                                            {contract.email && (
+                                                                <div
+                                                                    className="text-text-secondary truncate max-w-[200px] cursor-help"
+                                                                    title={contract.email}
+                                                                >
+                                                                    {contract.email}
+                                                                </div>
+                                                            )}
+                                                            <div className="text-text-tertiary font-mono">
+                                                                {formatPhone(contract.whatsapp)}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="space-y-0.5 text-xs">
+                                                            {contract.instagram && (
+                                                                <div className="text-text-secondary">{contract.instagram}</div>
+                                                            )}
+                                                            {contract.cpf && (
+                                                                <div className="text-text-tertiary font-mono">{contract.cpf}</div>
+                                                            )}
+                                                            {!contract.instagram && !contract.cpf && (
+                                                                <span className="text-text-tertiary">-</span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs px-2 py-1 rounded-md bg-white/[0.05] text-text-secondary">
+                                                            {SOURCE_LABELS[contract.source]}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                            {PACKAGE_LABELS[contract.package]}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {(() => {
+                                                            // Filtrar addons inválidos (vazios, "00)", etc)
+                                                            const validAddons = contract.addons.filter(
+                                                                addon => addon && addon.trim() !== "" && addon !== "00)" && !addon.match(/^\d+\)$/)
+                                                            );
+                                                            return validAddons.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {validAddons.slice(0, 2).map(addon => (
+                                                                        <span
+                                                                            key={addon}
+                                                                            className="text-xs px-1.5 py-0.5 rounded bg-white/[0.05] text-text-tertiary"
+                                                                        >
+                                                                            {ADDON_LABELS[addon] || addon}
+                                                                        </span>
+                                                                    ))}
+                                                                    {validAddons.length > 2 && (
+                                                                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/[0.05] text-text-tertiary">
+                                                                            +{validAddons.length - 2}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-text-tertiary text-xs">-</span>
+                                                            );
+                                                        })()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs text-text-secondary">
+                                                            Aceito os Termos de Serviço
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <span className="font-semibold text-emerald-400">
+                                                            R$ {contract.totalValue.toFixed(2)}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-text-tertiary hover:text-red-400 hover:bg-red-500/10"
+                                                            onClick={() => setDeleteId(contract.id)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
                         )}
                     </div>
                 ))}

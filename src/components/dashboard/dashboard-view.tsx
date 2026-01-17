@@ -749,30 +749,30 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
 
         {/* PERF FIX: Tabs controladas para desmontagem seletiva */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full max-w-[1200px] grid-cols-6">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="w-full flex overflow-x-auto pb-2 gap-2 lg:grid lg:grid-cols-6 lg:pb-0 mb-4 h-auto bg-transparent p-0 lg:bg-muted lg:p-1">
+            <TabsTrigger value="overview" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
               <LayoutDashboard className="h-4 w-4" />
-              Visão Geral
+              <span className="whitespace-nowrap">Visão Geral</span>
             </TabsTrigger>
-            <TabsTrigger value="dashboards" className="flex items-center gap-2">
+            <TabsTrigger value="dashboards" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
               <BarChart3 className="h-4 w-4" />
-              Dashboards
+              <span className="whitespace-nowrap">Dashboards</span>
             </TabsTrigger>
-            <TabsTrigger value="kanban" className="flex items-center gap-2">
+            <TabsTrigger value="kanban" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
               <Columns3 className="h-4 w-4" />
-              Kanban
+              <span className="whitespace-nowrap">Kanban</span>
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
+            <TabsTrigger value="calendar" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
               <CalendarIcon className="h-4 w-4" />
-              Calendário
+              <span className="whitespace-nowrap">Calendário</span>
             </TabsTrigger>
-            <TabsTrigger value="contracts" className="flex items-center gap-2">
+            <TabsTrigger value="contracts" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
               <FileText className="h-4 w-4" />
-              Contratos
+              <span className="whitespace-nowrap">Contratos</span>
             </TabsTrigger>
-            <TabsTrigger value="fixed-costs" className="flex items-center gap-2">
+            <TabsTrigger value="fixed-costs" className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-muted data-[state=active]:bg-brand-accent data-[state=active]:text-text-dark rounded-full lg:rounded-sm lg:bg-transparent lg:data-[state=active]:bg-background lg:data-[state=active]:text-text-primary">
               <Wallet className="h-4 w-4" />
-              Custos Fixos
+              <span className="whitespace-nowrap">Custos Fixos</span>
             </TabsTrigger>
           </TabsList>
 

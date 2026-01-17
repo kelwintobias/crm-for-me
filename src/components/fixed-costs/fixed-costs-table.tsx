@@ -10,6 +10,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -175,66 +176,110 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
 
                         {/* Tabela do Grupo - condicional */}
                         {expandedMonths.has(group.monthYear) && (
-                            <div className="rounded-xl border border-white/[0.08] overflow-hidden bg-brand-card/50">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-white/[0.06] hover:bg-transparent">
-                                            <TableHead className="text-text-tertiary">Data</TableHead>
-                                            <TableHead className="text-text-tertiary">Tipo</TableHead>
-                                            <TableHead className="text-text-tertiary">Categoria</TableHead>
-                                            <TableHead className="text-text-tertiary">Descrição</TableHead>
-                                            <TableHead className="text-text-tertiary text-right">Valor</TableHead>
-                                            <TableHead className="text-text-tertiary text-center">Mês</TableHead>
-                                            <TableHead className="text-text-tertiary text-center">Ano</TableHead>
-                                            <TableHead className="text-text-tertiary w-12"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {group.costs.map(cost => (
-                                            <TableRow
-                                                key={cost.id}
-                                                className="border-white/[0.04] hover:bg-white/[0.02]"
-                                            >
-                                                <TableCell className="font-mono text-sm">
-                                                    {format(new Date(cost.date), "dd/MM/yy")}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-xs px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">
-                                                        {cost.type}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="text-text-secondary">
-                                                    {cost.category}
-                                                </TableCell>
-                                                <TableCell className="font-medium text-text-primary">
-                                                    {cost.description}
-                                                </TableCell>
-                                                <TableCell className="text-right">
+                            <>
+                                {/* Mobile Card View */}
+                                <div className="md:hidden space-y-3">
+                                    {group.costs.map(cost => (
+                                        <Card key={cost.id} className="bg-brand-card/50 border-white/[0.08]">
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-semibold text-text-primary">{cost.description}</h4>
+                                                        <span className="text-xs text-text-tertiary font-mono">
+                                                            {format(new Date(cost.date), "dd/MM/yy")}
+                                                        </span>
+                                                    </div>
                                                     <span className="font-semibold text-orange-400">
                                                         {cost.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                                     </span>
-                                                </TableCell>
-                                                <TableCell className="text-center text-text-secondary">
-                                                    {cost.month}
-                                                </TableCell>
-                                                <TableCell className="text-center text-text-secondary">
-                                                    {cost.year}
-                                                </TableCell>
-                                                <TableCell>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-2 text-xs">
+                                                    <span className="px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">
+                                                        {cost.type}
+                                                    </span>
+                                                    <span className="px-2 py-1 rounded-md bg-white/[0.05] text-text-secondary">
+                                                        {cost.category}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex justify-end pt-2 border-t border-white/[0.06]">
                                                     <Button
                                                         variant="ghost"
-                                                        size="icon"
+                                                        size="sm"
                                                         className="h-8 w-8 text-text-tertiary hover:text-red-400 hover:bg-red-500/10"
                                                         onClick={() => setDeleteId(cost.id)}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
-                                                </TableCell>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+
+                                {/* Desktop Table View */}
+                                <div className="hidden md:block rounded-xl border border-white/[0.08] overflow-hidden bg-brand-card/50">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="border-white/[0.06] hover:bg-transparent">
+                                                <TableHead className="text-text-tertiary">Data</TableHead>
+                                                <TableHead className="text-text-tertiary">Tipo</TableHead>
+                                                <TableHead className="text-text-tertiary">Categoria</TableHead>
+                                                <TableHead className="text-text-tertiary">Descrição</TableHead>
+                                                <TableHead className="text-text-tertiary text-right">Valor</TableHead>
+                                                <TableHead className="text-text-tertiary text-center">Mês</TableHead>
+                                                <TableHead className="text-text-tertiary text-center">Ano</TableHead>
+                                                <TableHead className="text-text-tertiary w-12"></TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {group.costs.map(cost => (
+                                                <TableRow
+                                                    key={cost.id}
+                                                    className="border-white/[0.04] hover:bg-white/[0.02]"
+                                                >
+                                                    <TableCell className="font-mono text-sm">
+                                                        {format(new Date(cost.date), "dd/MM/yy")}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">
+                                                            {cost.type}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-text-secondary">
+                                                        {cost.category}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium text-text-primary">
+                                                        {cost.description}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <span className="font-semibold text-orange-400">
+                                                            {cost.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-center text-text-secondary">
+                                                        {cost.month}
+                                                    </TableCell>
+                                                    <TableCell className="text-center text-text-secondary">
+                                                        {cost.year}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-text-tertiary hover:text-red-400 hover:bg-red-500/10"
+                                                            onClick={() => setDeleteId(cost.id)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
                         )}
                     </div>
                 ))}
