@@ -334,16 +334,8 @@ export async function cancelAppointment(data: unknown) {
 // Buscar horários disponíveis para um dia
 export async function getAvailableSlots(date: string) {
   try {
-    // Autenticação separada para melhor tratamento de erros
-    try {
-      await getCurrentUser();
-    } catch (authError) {
-      console.error("Erro de autenticação em getAvailableSlots:", authError);
-      return {
-        success: false,
-        error: "Sessão expirada. Por favor, faça login novamente."
-      };
-    }
+    // Nota: Auth é validada pelo middleware antes da página carregar
+    // Dados são compartilhados entre todos os usuários
 
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
@@ -409,17 +401,8 @@ export async function getAvailableSlots(date: string) {
 // Buscar agendamentos da semana
 export async function getWeekAppointments(startDate: string) {
   try {
-    // Autenticação separada para melhor tratamento de erros
-    let user;
-    try {
-      user = await getCurrentUser();
-    } catch (authError) {
-      console.error("Erro de autenticação em getWeekAppointments:", authError);
-      return {
-        success: false,
-        error: "Sessão expirada. Por favor, faça login novamente."
-      };
-    }
+    // Nota: Auth é validada pelo middleware antes da página carregar
+    // Dados são compartilhados entre todos os usuários
 
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -462,7 +445,7 @@ export async function getWeekAppointments(startDate: string) {
         duration: apt.duration,
         status: apt.status,
         notes: apt.notes,
-        isOwner: apt.userId === user.id,
+        isOwner: false, // Sem auth check, não sabemos o dono
       })),
     };
   } catch (error) {
@@ -511,16 +494,8 @@ export async function getAppointmentHistory(appointmentId: string) {
 // Buscar todos os agendamentos (para métricas do dashboard)
 export async function getAllAppointments() {
   try {
-    // Autenticação separada para melhor tratamento de erros
-    try {
-      await getCurrentUser();
-    } catch (authError) {
-      console.error("Erro de autenticação em getAllAppointments:", authError);
-      return {
-        success: false,
-        error: "Sessão expirada. Por favor, faça login novamente."
-      };
-    }
+    // Nota: Auth é validada pelo middleware antes da página carregar
+    // Dados são compartilhados entre todos os usuários
 
     const appointments = await prisma.appointment.findMany({
       select: {

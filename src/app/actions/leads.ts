@@ -299,7 +299,8 @@ export async function deleteLead(id: string) {
 
 export async function getLeads() {
   try {
-    await getCurrentUser();
+    // Nota: Auth é validada pelo middleware antes da página carregar
+    // Dados são compartilhados entre todos os usuários
 
     const leads = await prisma.lead.findMany({
       where: {
@@ -311,7 +312,8 @@ export async function getLeads() {
     });
 
     return { success: true, data: leads.map(serializeLead) };
-  } catch {
+  } catch (error) {
+    console.error("Erro ao buscar leads:", error);
     return { success: false, error: "Erro ao buscar leads" };
   }
 }

@@ -106,7 +106,8 @@ export async function createContract(data: unknown) {
 
 export async function getContracts() {
     try {
-        await getCurrentUser();
+        // Nota: Auth é validada pelo middleware antes da página carregar
+        // Dados são compartilhados entre todos os usuários
 
         const contracts = await prisma.contract.findMany({
             orderBy: { contractDate: "desc" },

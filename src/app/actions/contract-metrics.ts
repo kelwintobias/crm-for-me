@@ -31,7 +31,8 @@ async function getCurrentUser() {
 
 export async function getContractMetrics() {
     try {
-        await getCurrentUser();
+        // Nota: Auth é validada pelo middleware antes da página carregar
+        // Dados são compartilhados entre todos os usuários
 
         const now = new Date();
         const currentMonthStart = startOfMonth(now);

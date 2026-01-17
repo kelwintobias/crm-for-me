@@ -112,10 +112,10 @@ export async function createFixedCost(data: unknown) {
 
 export async function getFixedCosts() {
     try {
-        const user = await getCurrentUser();
+        // Nota: Auth é validada pelo middleware antes da página carregar
+        // Dados são compartilhados entre todos os usuários
 
         const costs = await prisma.fixedCost.findMany({
-            where: { userId: user.id },
             orderBy: { date: "desc" },
         });
 

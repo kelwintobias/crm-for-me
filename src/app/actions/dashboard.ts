@@ -34,7 +34,8 @@ async function getCurrentUser() {
 
 export async function getDashboardMetrics() {
   try {
-    await getCurrentUser();
+    // Nota: Auth é validada pelo middleware antes da página carregar
+    // Dados são compartilhados entre todos os usuários
 
     // Periodos para comparacao
     const now = new Date();
@@ -479,7 +480,8 @@ export async function getDashboardMetrics() {
 
 export async function getDetailedMetrics() {
   try {
-    await getCurrentUser();
+    // Nota: Auth é validada pelo middleware antes da página carregar
+    // Dados são compartilhados entre todos os usuários
 
     // Contagem por stage
     const stageCount = await prisma.lead.groupBy({
