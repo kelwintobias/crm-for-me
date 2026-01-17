@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Header } from "../layout/header";
-import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -798,17 +798,17 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="w-full flex items-center gap-2 mb-4 bg-transparent p-0">
             {/* TABS PRINCIPAIS VISIVEIS */}
-            <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+            {/* TABS PRINCIPAIS VISIVEIS */}
+            <TabsList className="flex items-center gap-2 p-1 bg-muted rounded-lg w-auto h-auto">
               <TabsTrigger value="kanban" className="flex items-center gap-2 px-4 py-2">
                 <Columns3 className="h-4 w-4" />
                 <span className="whitespace-nowrap">Kanban</span>
               </TabsTrigger>
-
               <TabsTrigger value="calendar" className="flex items-center gap-2 px-4 py-2">
                 <CalendarIcon className="h-4 w-4" />
                 <span className="whitespace-nowrap">Calendário</span>
               </TabsTrigger>
-            </div>
+            </TabsList>
 
             {/* MENU MULTIMIDIA (Hamburger) */}
             <DropdownMenu>
