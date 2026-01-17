@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 // ============================================
 // SCHEMAS DE VALIDAÇÃO
@@ -138,7 +139,7 @@ export async function createAppointment(data: unknown) {
     }
 
     // Cria agendamento e atualiza stage do lead em uma transação
-    const appointment = await prisma.$transaction(async (tx) => {
+    const appointment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Criar agendamento
       const apt = await tx.appointment.create({
         data: {
@@ -230,7 +231,7 @@ export async function rescheduleAppointment(data: unknown) {
     }
 
     // Atualizar agendamento
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const apt = await tx.appointment.update({
         where: { id: validated.id },
         data: {
@@ -292,7 +293,7 @@ export async function cancelAppointment(data: unknown) {
     }
 
     // Cancelar agendamento
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.appointment.update({
         where: { id: validated.id },
         data: {
@@ -333,7 +334,16 @@ export async function cancelAppointment(data: unknown) {
 // Buscar horários disponíveis para um dia
 export async function getAvailableSlots(date: string) {
   try {
-    await getCurrentUser();
+    // Autenticação separada para melhor tratamento de erros
+    try {
+      await getCurrentUser();
+    } catch (authError) {
+      console.error("Erro de autenticação em getAvailableSlots:", authError);
+      return {
+        success: false,
+        error: "Sessão expirada. Por favor, faça login novamente."
+      };
+    }
 
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
@@ -371,7 +381,7 @@ export async function getAvailableSlots(date: string) {
         // Verifica se há conflito (considerando 1 hora de duração)
         const slotEnd = new Date(slotTime.getTime() + 60 * 60000);
 
-        const hasConflict = appointments.some((apt) => {
+        const hasConflict = appointments.some((apt: { scheduledAt: Date; duration: number }) => {
           const aptEnd = new Date(
             apt.scheduledAt.getTime() + apt.duration * 60000
           );
@@ -389,14 +399,27 @@ export async function getAvailableSlots(date: string) {
     return { success: true, data: slots };
   } catch (error) {
     console.error("Erro ao buscar horários:", error);
-    return { success: false, error: "Erro ao buscar horários" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao buscar horários"
+    };
   }
 }
 
 // Buscar agendamentos da semana
 export async function getWeekAppointments(startDate: string) {
   try {
-    const user = await getCurrentUser();
+    // Autenticação separada para melhor tratamento de erros
+    let user;
+    try {
+      user = await getCurrentUser();
+    } catch (authError) {
+      console.error("Erro de autenticação em getWeekAppointments:", authError);
+      return {
+        success: false,
+        error: "Sessão expirada. Por favor, faça login novamente."
+      };
+    }
 
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -429,7 +452,7 @@ export async function getWeekAppointments(startDate: string) {
 
     return {
       success: true,
-      data: appointments.map((apt) => ({
+      data: appointments.map((apt: typeof appointments[number]) => ({
         id: apt.id,
         leadId: apt.lead.id,
         leadName: apt.lead.name,
@@ -444,7 +467,10 @@ export async function getWeekAppointments(startDate: string) {
     };
   } catch (error) {
     console.error("Erro ao buscar agendamentos:", error);
-    return { success: false, error: "Erro ao buscar agendamentos" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao buscar agendamentos"
+    };
   }
 }
 
@@ -468,7 +494,7 @@ export async function getAppointmentHistory(appointmentId: string) {
 
     return {
       success: true,
-      data: history.map((h) => ({
+      data: history.map((h: typeof history[number]) => ({
         action: h.action,
         userName: h.user.name || h.user.email,
         previousValue: h.previousValue,
@@ -485,7 +511,16 @@ export async function getAppointmentHistory(appointmentId: string) {
 // Buscar todos os agendamentos (para métricas do dashboard)
 export async function getAllAppointments() {
   try {
-    await getCurrentUser();
+    // Autenticação separada para melhor tratamento de erros
+    try {
+      await getCurrentUser();
+    } catch (authError) {
+      console.error("Erro de autenticação em getAllAppointments:", authError);
+      return {
+        success: false,
+        error: "Sessão expirada. Por favor, faça login novamente."
+      };
+    }
 
     const appointments = await prisma.appointment.findMany({
       select: {
@@ -501,7 +536,7 @@ export async function getAllAppointments() {
 
     return {
       success: true,
-      data: appointments.map((apt) => ({
+      data: appointments.map((apt: typeof appointments[number]) => ({
         id: apt.id,
         scheduledAt: apt.scheduledAt.toISOString(),
         status: apt.status,
@@ -512,7 +547,10 @@ export async function getAllAppointments() {
     };
   } catch (error) {
     console.error("Erro ao buscar agendamentos:", error);
-    return { success: false, error: "Erro ao buscar agendamentos" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao buscar agendamentos"
+    };
   }
 }
 
