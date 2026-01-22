@@ -3,13 +3,22 @@ import { createLeadService } from "@/app/actions/leads";
 import { prisma } from "@/lib/prisma";
 import { LeadSource } from "@prisma/client";
 
+// Mapeamento exato de fontes do BotConversa para o CRM
+const SOURCE_MAP: Record<string, LeadSource> = {
+    "anuncio nas redes sociais da upboost": "ANUNCIO",
+    "indicacao": "INDICACAO",
+    "pagina parceira": "PAGINA_PARCEIRA",
+    "video de influenciadores": "INFLUENCER",
+};
+
 // Normaliza string removendo acentos e cedilha
 function normalizeText(text: string): string {
     return text
+        .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[çÇ]/g, "c")
-        .toUpperCase();
+        .replace(/\u00e7/g, "c")  // ç minúsculo
+        .replace(/\u00c7/g, "c"); // Ç maiúsculo
 }
 
 // Mapeamento de fontes do BotConversa para o CRM
@@ -21,8 +30,15 @@ function normalizeText(text: string): string {
 function mapSource(sourceText: string): LeadSource {
     if (!sourceText) return "OUTRO";
 
-    const text = normalizeText(sourceText);
+    const normalized = normalizeText(sourceText);
 
+    // Primeiro tenta match exato
+    if (SOURCE_MAP[normalized]) {
+        return SOURCE_MAP[normalized];
+    }
+
+    // Fallback para match parcial
+    const text = normalized.toUpperCase();
     if (text.includes("UPBOOST") || text.includes("ANUNCIO")) return "ANUNCIO";
     if (text.includes("INFLUENCIADOR") || text.includes("INFLUENCER")) return "INFLUENCER";
     if (text.includes("INDICACAO")) return "INDICACAO";
