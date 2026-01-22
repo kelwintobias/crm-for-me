@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     try {
         // Parse do Body
         const body = await req.json();
-        const { name, phone, source, plan, stage } = body;
+        const { name, phone, source } = body;
 
         // Validação básica
         if (!name || !phone) {
@@ -71,8 +71,7 @@ export async function POST(req: NextRequest) {
                 name,
                 phone,
                 source: finalSource,
-                plan,
-                stage,
+                stage: "NOVO_LEAD",
                 userId: anyUser.id
             });
         } else {
@@ -80,8 +79,7 @@ export async function POST(req: NextRequest) {
                 name,
                 phone,
                 source: finalSource,
-                plan,
-                stage,
+                stage: "NOVO_LEAD",
                 userId: adminUser.id
             });
         }

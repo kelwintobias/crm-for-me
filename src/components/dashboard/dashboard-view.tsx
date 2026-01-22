@@ -1067,9 +1067,12 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                             </div>
                             <Badge
                               variant="outline"
-                              className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-normal text-xs"
+                              className={pessoa.tag === "CLIENTE_ATIVO"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-normal text-xs"
+                                : "bg-blue-500/10 text-blue-400 border-blue-500/20 font-normal text-xs"
+                              }
                             >
-                              Ativo
+                              {pessoa.tag === "CLIENTE_ATIVO" ? "Ativo" : "Lead"}
                             </Badge>
                           </div>
                           <div className="flex items-center justify-between text-sm">
@@ -1184,9 +1187,12 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                               <TableCell>
                                 <Badge
                                   variant="outline"
-                                  className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-normal"
+                                  className={pessoa.tag === "CLIENTE_ATIVO"
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-normal"
+                                    : "bg-blue-500/10 text-blue-400 border-blue-500/20 font-normal"
+                                  }
                                 >
-                                  Cliente Ativo
+                                  {pessoa.tag === "CLIENTE_ATIVO" ? "Cliente Ativo" : "Lead"}
                                 </Badge>
                               </TableCell>
                               <TableCell>

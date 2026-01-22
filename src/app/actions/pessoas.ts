@@ -23,7 +23,7 @@ export interface PessoaData {
     lastContractDate: string;
 
     // Campos calculados
-    tag: "CLIENTE_ATIVO";
+    tag: "CLIENTE_ATIVO" | "LEAD";
     ltv: number;
     contractCount: number;
 
@@ -140,6 +140,43 @@ export async function getPessoasData(): Promise<PessoaData[]> {
                     addons: c.addons,
                     totalValue: Number(c.totalValue),
                 })),
+            });
+        }
+
+        // Incluir leads que não possuem contrato vinculado
+        const linkedPhones = new Set(
+            pessoasData.map(p => p.phone.replace(/\D/g, ""))
+        );
+
+        const leadsWithoutContract = leads.filter(l => {
+            if (l.deletedAt) return false;
+            const leadPhone = l.phone.replace(/\D/g, "");
+            return !linkedPhones.has(leadPhone);
+        });
+
+        for (const lead of leadsWithoutContract) {
+            pessoasData.push({
+                id: `lead-${lead.id}`,
+                name: lead.name,
+                phone: lead.phone,
+                cpf: lead.cpf || null,
+                email: lead.email || null,
+                instagram: lead.instagram || null,
+                source: lead.source,
+
+                lastPackage: "",
+                lastAddons: [],
+                lastContractDate: lead.createdAt.toISOString(),
+
+                tag: "LEAD",
+                ltv: 0,
+                contractCount: 0,
+
+                observacoes: lead.notes || "",
+                leadId: lead.id,
+                purchaseHistoryText: "",
+
+                contracts: [],
             });
         }
 
