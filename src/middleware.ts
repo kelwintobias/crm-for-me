@@ -39,8 +39,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Rotas públicas
-  const publicRoutes = ["/login", "/auth/callback", "/api/webhooks"];
+  // Rotas públicas (não requerem autenticação)
+  const publicRoutes = ["/login", "/auth/callback", "/api/webhooks", "/api/cron"];
   const isPublicRoute = publicRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
@@ -57,6 +57,38 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // Verificar se usuário precisa trocar senha
+  // Ignorar para rotas de API e a própria página de update-password
+  const passwordExemptRoutes = ["/update-password", "/api/", "/auth/"];
+  const isPasswordExempt = passwordExemptRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route)
+  );
+
+  if (user && !isPasswordExempt) {
+    // Fazer chamada para verificar mustChangePassword
+    // Usamos um endpoint interno para evitar importar Prisma no middleware (Edge)
+    try {
+      const checkUrl = new URL("/api/user/check-password-status", request.url);
+      const checkResponse = await fetch(checkUrl.toString(), {
+        headers: {
+          cookie: request.headers.get("cookie") || "",
+        },
+      });
+
+      if (checkResponse.ok) {
+        const data = await checkResponse.json();
+        if (data.mustChangePassword) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/update-password";
+          return NextResponse.redirect(url);
+        }
+      }
+    } catch {
+      // Se falhar a verificação, continua normalmente
+      console.error("Erro ao verificar status de senha");
+    }
   }
 
   return supabaseResponse;

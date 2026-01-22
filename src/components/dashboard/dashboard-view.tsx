@@ -276,6 +276,27 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   const shouldRenderDashboards = useMemo(() => activeTab === "dashboards", [activeTab]);
   const shouldRenderPeople = useMemo(() => activeTab === "people", [activeTab]);
 
+  // ===========================================
+  // TAB VISIBILITY CONTROL
+  // ===========================================
+  // Mapping between activeTab values and allowedTabs values
+  const TAB_PERMISSION_MAP: Record<string, string> = {
+    "kanban": "kanban",
+    "calendar": "kanban", // Calendar is part of kanban workflow
+    "overview": "dashboard",
+    "dashboards": "dashboard",
+    "people": "pessoas",
+    "contracts": "contratos",
+    "fixed-costs": "custos",
+  };
+
+  // Helper to check if user can view a specific tab
+  const canViewTab = useCallback((tabValue: string): boolean => {
+    if (user.role === "ADMIN") return true;
+    const permission = TAB_PERMISSION_MAP[tabValue];
+    return permission ? user.allowedTabs.includes(permission) : false;
+  }, [user.role, user.allowedTabs]);
+
   // Estado para ordenação da tabela Pessoas
   const [pessoasSortColumn, setPessoasSortColumn] = useState<"name" | "tags" | "ltv" | "lastContractDate">("lastContractDate");
   const [pessoasSortDirection, setPessoasSortDirection] = useState<"asc" | "desc">("desc");
@@ -863,20 +884,23 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
         {/* PERF FIX: Tabs controladas para desmontagem seletiva */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="w-full flex items-center gap-2 mb-4 bg-transparent p-0">
-            {/* TABS PRINCIPAIS VISIVEIS */}
-            {/* TABS PRINCIPAIS VISIVEIS */}
+            {/* TABS PRINCIPAIS VISIVEIS - Filtradas por permissão */}
             <TabsList className="flex items-center gap-2 p-1 bg-muted rounded-lg w-auto h-auto">
-              <TabsTrigger value="kanban" className="flex items-center gap-2 px-4 py-3 min-h-[44px]">
-                <Columns3 className="h-4 w-4" />
-                <span className="whitespace-nowrap">Kanban</span>
-              </TabsTrigger>
-              <TabsTrigger value="calendar" className="flex items-center gap-2 px-4 py-3 min-h-[44px]">
-                <CalendarIcon className="h-4 w-4" />
-                <span className="whitespace-nowrap">Calendário</span>
-              </TabsTrigger>
+              {canViewTab("kanban") && (
+                <TabsTrigger value="kanban" className="flex items-center gap-2 px-4 py-3 min-h-[44px]">
+                  <Columns3 className="h-4 w-4" />
+                  <span className="whitespace-nowrap">Kanban</span>
+                </TabsTrigger>
+              )}
+              {canViewTab("calendar") && (
+                <TabsTrigger value="calendar" className="flex items-center gap-2 px-4 py-3 min-h-[44px]">
+                  <CalendarIcon className="h-4 w-4" />
+                  <span className="whitespace-nowrap">Calendário</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
-            {/* MENU MULTIMIDIA (Hamburger) */}
+            {/* MENU MULTIMIDIA (Hamburger) - Itens filtrados por permissão */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 bg-muted border-none hover:bg-muted/80 ml-auto">
@@ -884,27 +908,37 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setActiveTab("overview")} className="cursor-pointer gap-2">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Visão Geral
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("dashboards")} className="cursor-pointer gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Dashboards
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setActiveTab("people")} className="cursor-pointer gap-2">
-                  <User className="h-4 w-4" />
-                  Pessoas
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("fixed-costs")} className="cursor-pointer gap-2">
-                  <Wallet className="h-4 w-4" />
-                  Custos Fixos
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setActiveTab("contracts")} className="cursor-pointer gap-2">
-                  <FileText className="h-4 w-4" />
-                  Contratos
-                </DropdownMenuItem>
+                {canViewTab("overview") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("overview")} className="cursor-pointer gap-2">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Visão Geral
+                  </DropdownMenuItem>
+                )}
+                {canViewTab("dashboards") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("dashboards")} className="cursor-pointer gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Dashboards
+                  </DropdownMenuItem>
+                )}
+                {(canViewTab("overview") || canViewTab("dashboards")) && <DropdownMenuSeparator />}
+                {canViewTab("people") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("people")} className="cursor-pointer gap-2">
+                    <User className="h-4 w-4" />
+                    Pessoas
+                  </DropdownMenuItem>
+                )}
+                {canViewTab("fixed-costs") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("fixed-costs")} className="cursor-pointer gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Custos Fixos
+                  </DropdownMenuItem>
+                )}
+                {canViewTab("contracts") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("contracts")} className="cursor-pointer gap-2">
+                    <FileText className="h-4 w-4" />
+                    Contratos
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

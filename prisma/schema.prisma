@@ -85,6 +85,12 @@ model User {
   name           String?
   role           UserRole @default(VENDEDOR)
 
+  // Controle de senha - força atualização no próximo login
+  mustChangePassword Boolean @default(false)
+
+  // Controle de abas visíveis (valores: dashboard, kanban, contratos, pessoas, custos)
+  allowedTabs    String[] @default(["kanban", "pessoas"])
+
   // Taxa de comissao do vendedor (ex: 10.00 = 10%)
   commissionRate Decimal  @default(0) @db.Decimal(5, 2)
 

@@ -32,6 +32,8 @@ export default async function HomePage() {
       name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "Usuário",
       role: "VENDEDOR" as const,
       commissionRate: 0,
+      allowedTabs: ["kanban", "pessoas"],
+      mustChangePassword: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

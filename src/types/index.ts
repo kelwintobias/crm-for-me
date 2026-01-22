@@ -40,6 +40,8 @@ export interface PlainLead extends Omit<Lead, 'value'> {
 
 export interface PlainUser extends Omit<User, 'commissionRate'> {
   commissionRate: number;
+  allowedTabs: string[];
+  mustChangePassword: boolean;
 }
 
 export interface KanbanColumn {
