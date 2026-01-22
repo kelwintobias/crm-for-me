@@ -3,11 +3,12 @@ import { createLeadService } from "@/app/actions/leads";
 import { prisma } from "@/lib/prisma";
 import { LeadSource } from "@prisma/client";
 
-// Normaliza string removendo acentos
+// Normaliza string removendo acentos e cedilha
 function normalizeText(text: string): string {
     return text
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[çÇ]/g, "c")
         .toUpperCase();
 }
 
