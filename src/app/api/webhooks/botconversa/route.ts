@@ -3,25 +3,8 @@ import { createLeadService } from "@/app/actions/leads";
 import { prisma } from "@/lib/prisma";
 import { LeadSource } from "@prisma/client";
 
-// Mapeamento exato de fontes do BotConversa para o CRM
-const SOURCE_MAP: Record<string, LeadSource> = {
-    "anuncio nas redes sociais da upboost": "ANUNCIO",
-    "indicacao": "INDICACAO",
-    "pagina parceira": "PAGINA_PARCEIRA",
-    "video de influenciadores": "INFLUENCER",
-};
-
-// Normaliza string removendo acentos e cedilha
-function normalizeText(text: string): string {
-    return text
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\u00e7/g, "c")  // ç minúsculo
-        .replace(/\u00c7/g, "c"); // Ç maiúsculo
-}
-
 // Mapeamento de fontes do BotConversa para o CRM
+// Usa keywords ASCII que funcionam independente de encoding
 // Valores esperados do BotConversa:
 // - "Anúncio nas redes sociais da UPBOOST" → ANUNCIO
 // - "Indicação" → INDICACAO
@@ -30,20 +13,14 @@ function normalizeText(text: string): string {
 function mapSource(sourceText: string): LeadSource {
     if (!sourceText) return "OUTRO";
 
-    const normalized = normalizeText(sourceText);
+    const text = sourceText.toLowerCase();
 
-    // Primeiro tenta match exato
-    if (SOURCE_MAP[normalized]) {
-        return SOURCE_MAP[normalized];
-    }
-
-    // Fallback para match parcial
-    const text = normalized.toUpperCase();
-    if (text.includes("UPBOOST") || text.includes("ANUNCIO")) return "ANUNCIO";
-    if (text.includes("INFLUENCIADOR") || text.includes("INFLUENCER")) return "INFLUENCER";
-    if (text.includes("INDICACAO")) return "INDICACAO";
-    if (text.includes("PARCEIRA") || text.includes("PAGINA")) return "PAGINA_PARCEIRA";
-    if (text.includes("INSTAGRAM")) return "INSTAGRAM";
+    // Match por keywords ASCII únicas (funciona com qualquer encoding)
+    if (text.includes("upboost")) return "ANUNCIO";
+    if (text.includes("indica")) return "INDICACAO";  // "Indicação" contém "indica"
+    if (text.includes("parceira")) return "PAGINA_PARCEIRA";
+    if (text.includes("influenc")) return "INFLUENCER";  // "influenciadores" contém "influenc"
+    if (text.includes("instagram")) return "INSTAGRAM";
 
     return "OUTRO";
 }
@@ -120,11 +97,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        return NextResponse.json({
-            success: true,
-            mappedSource: finalSource,
-            debug: { originalSource: source, normalized: source ? normalizeText(source) : null }
-        });
+        return NextResponse.json({ success: true, mappedSource: finalSource });
 
     } catch (error) {
         console.error("Webhook Error:", error);
