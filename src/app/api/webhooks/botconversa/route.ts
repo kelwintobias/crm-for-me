@@ -120,7 +120,11 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        return NextResponse.json({ success: true, mappedSource: finalSource });
+        return NextResponse.json({
+            success: true,
+            mappedSource: finalSource,
+            debug: { originalSource: source, normalized: source ? normalizeText(source) : null }
+        });
 
     } catch (error) {
         console.error("Webhook Error:", error);
