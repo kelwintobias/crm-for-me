@@ -3,17 +3,30 @@ import { createLeadService } from "@/app/actions/leads";
 import { prisma } from "@/lib/prisma";
 import { LeadSource } from "@prisma/client";
 
-// Mapeamento de fontes
+// Normaliza string removendo acentos
+function normalizeText(text: string): string {
+    return text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase();
+}
+
+// Mapeamento de fontes do BotConversa para o CRM
+// Valores esperados do BotConversa:
+// - "Anúncio nas redes sociais da UPBOOST" → ANUNCIO
+// - "Indicação" → INDICACAO
+// - "Página Parceira" → PAGINA_PARCEIRA
+// - "Vídeo de influenciadores" → INFLUENCER
 function mapSource(sourceText: string): LeadSource {
     if (!sourceText) return "OUTRO";
 
-    const text = sourceText.toUpperCase();
+    const text = normalizeText(sourceText);
 
-    if (text.includes("UPBOOST")) return "ANUNCIO";
-    if (text.includes("INFLUENCER")) return "INFLUENCER";
-    if (text.includes("INSTAGRAM")) return "INSTAGRAM";
+    if (text.includes("UPBOOST") || text.includes("ANUNCIO")) return "ANUNCIO";
+    if (text.includes("INFLUENCIADOR") || text.includes("INFLUENCER")) return "INFLUENCER";
     if (text.includes("INDICACAO")) return "INDICACAO";
-    if (text.includes("PARCEIRA")) return "PAGINA_PARCEIRA";
+    if (text.includes("PARCEIRA") || text.includes("PAGINA")) return "PAGINA_PARCEIRA";
+    if (text.includes("INSTAGRAM")) return "INSTAGRAM";
 
     return "OUTRO";
 }
