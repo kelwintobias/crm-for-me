@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
                 name,
                 phone,
                 source: finalSource,
-                stage: "NOVO_LEAD",
+                stage: "EM_NEGOCIACAO",
                 userId: anyUser.id
             });
         } else {
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
                 name,
                 phone,
                 source: finalSource,
-                stage: "NOVO_LEAD",
+                stage: "EM_NEGOCIACAO",
                 userId: adminUser.id
             });
         }

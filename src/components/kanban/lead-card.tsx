@@ -4,6 +4,7 @@ import { memo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, GripVertical } from "lucide-react";
 import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, PlainLead } from "@/types";
+import { ShoppingBag } from "lucide-react";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,16 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
           )}
         </div>
 
+        {/* Histórico de compras */}
+        {lead.contractHistory && (
+          <div className="mt-2 pt-2 border-t border-zinc-700/50 flex items-center gap-2">
+            <ShoppingBag className="w-3 h-3 text-amber-400 shrink-0" />
+            <p className="text-[10px] text-amber-400">
+              Cliente recorrente — {lead.contractHistory.contractCount} {lead.contractHistory.contractCount === 1 ? "compra" : "compras"} · LTV {lead.contractHistory.ltv.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </p>
+          </div>
+        )}
+
         {/* Adicionais */}
         {lead.addOns && (
           <div className="mt-2 pt-2 border-t border-zinc-700/50">
@@ -118,6 +129,7 @@ export const LeadCard = memo(LeadCardInner, (prev, next) => {
     prev.lead.plan === next.lead.plan &&
     prev.lead.stage === next.lead.stage &&
     prev.lead.addOns === next.lead.addOns &&
+    prev.lead.contractHistory?.contractCount === next.lead.contractHistory?.contractCount &&
     prev.isOverlay === next.isOverlay &&
     prev.isDragging === next.isDragging
   );

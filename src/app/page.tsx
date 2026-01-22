@@ -51,14 +51,28 @@ export default async function HomePage() {
   const rawLeads = leadsResult.data || [];
   const appointments = appointmentsResult.data || [];
 
-  // CONVERSÃO DE DADOS (Decimal -> Number)
-  // Necessário pois Client Components não aceitam objetos complexos como Decimal
-  const leads = rawLeads.map((lead) => ({
-    ...lead,
-    value: Number(lead.value),
-  }));
-
   const contracts = contractsResult.data || [];
+
+  // CONVERSÃO DE DADOS (Decimal -> Number) + Enriquecimento com histórico de contratos
+  const leads = rawLeads.map((lead) => {
+    const leadPhone = lead.phone.replace(/\D/g, "");
+    const leadContracts = contracts.filter(
+      (c) => c.whatsapp.replace(/\D/g, "") === leadPhone
+    );
+
+    return {
+      ...lead,
+      value: Number(lead.value),
+      ...(leadContracts.length > 0 && {
+        contractHistory: {
+          contractCount: leadContracts.length,
+          ltv: leadContracts.reduce((sum, c) => sum + Number(c.totalValue), 0),
+          lastPackage: leadContracts[0].package,
+          lastContractDate: String(leadContracts[0].contractDate),
+        },
+      }),
+    };
+  });
   const fixedCosts = fixedCostsResult.data || [];
 
   const plainUser = {

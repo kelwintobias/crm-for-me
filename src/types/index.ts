@@ -26,8 +26,16 @@ export interface LeadWithUser extends Lead {
   user: User;
 }
 
+export interface LeadContractHistory {
+  contractCount: number;
+  ltv: number;
+  lastPackage: string;
+  lastContractDate: string;
+}
+
 export interface PlainLead extends Omit<Lead, 'value'> {
   value: number;
+  contractHistory?: LeadContractHistory;
 }
 
 export interface PlainUser extends Omit<User, 'commissionRate'> {
