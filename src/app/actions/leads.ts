@@ -103,8 +103,60 @@ export async function getCurrentUser() {
 // CRIAR LEAD
 // ============================================
 
+// ============================================
+// CRIAR LEAD (SERVICE)
+// ============================================
+
+export type CreateLeadInput = {
+  name: string;
+  phone: string;
+  source: LeadSource;
+  plan?: PlanType;
+  stage?: PipelineStage;
+  userId?: string; // Opcional: se não passar, tenta pegar do usuário logado ou usa um padrão
+};
+
+export async function createLeadService(input: CreateLeadInput) {
+  // Se userId não for fornecido, tenta pegar do usuário logado
+  let userId = input.userId;
+  
+  if (!userId) {
+    try {
+      const user = await getCurrentUser();
+      userId = user.id;
+    } catch (error) {
+      throw new Error("UserId obrigatório ou usuário não autenticado");
+    }
+  }
+
+  const plan = input.plan || "INDEFINIDO";
+  const stage = input.stage || "NOVO_LEAD";
+
+  // SEGURANCA: Valor financeiro calculado APENAS no backend
+  const value = getPlanValue(plan);
+
+  const lead = await prisma.lead.create({
+    data: {
+      name: input.name,
+      phone: input.phone,
+      source: input.source,
+      plan: plan,
+      stage: stage,
+      value: value,
+      userId: userId,
+    },
+  });
+
+  return lead;
+}
+
+// ============================================
+// CRIAR LEAD (SERVER ACTION)
+// ============================================
+
 export async function createLead(formData: FormData) {
   try {
+    // Apenas para garantir que o usuário está logado antes de processar
     const user = await getCurrentUser();
 
     const rawData = {
@@ -116,23 +168,10 @@ export async function createLead(formData: FormData) {
     };
 
     const validatedData = createLeadSchema.parse(rawData);
-    const plan = validatedData.plan || "INDEFINIDO";
-    const stage = validatedData.stage || "NOVO_LEAD";
 
-    // SEGURANCA: Valor financeiro calculado APENAS no backend
-    // O frontend NAO pode enviar ou manipular este valor
-    const value = getPlanValue(plan);
-
-    const lead = await prisma.lead.create({
-      data: {
-        name: validatedData.name,
-        phone: validatedData.phone,
-        source: validatedData.source,
-        plan: plan,
-        stage: stage,
-        value: value,
-        userId: user.id,
-      },
+    const lead = await createLeadService({
+      ...validatedData,
+      userId: user.id
     });
 
     revalidatePath("/");
