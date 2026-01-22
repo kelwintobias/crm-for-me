@@ -27,18 +27,7 @@ function mapSource(sourceText: string): LeadSource {
 
 export async function POST(req: NextRequest) {
     try {
-        // 1. Verificação de Segurança (API Key simples)
-        const apiKey = req.headers.get("x-api-key");
-        const validApiKey = process.env.BOTCONVERSA_API_KEY || "crm-secret-key-123";
-
-        if (apiKey !== validApiKey) {
-            return NextResponse.json(
-                { success: false, error: "Unauthorized" },
-                { status: 401 }
-            );
-        }
-
-        // 2. Parse do Body
+        // Parse do Body
         const body = await req.json();
         const { name, phone, source, plan, stage } = body;
 
