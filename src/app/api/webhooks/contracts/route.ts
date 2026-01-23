@@ -1,18 +1,117 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ContractPackage, ContractSource, PipelineStage } from "@prisma/client";
+import {
+    calculateTotalValue,
+    PACKAGE_LABELS,
+    ADDON_LABELS,
+    ADDON_PRICES
+} from "@/lib/contract-constants";
 
 // ===========================================
-// WEBHOOK: RECEBER CONTRATOS VIA HTTP
+// WEBHOOK: RECEBER CONTRATOS VIA HTTP (CUSTOM FORMAT)
 // ===========================================
 
 export const dynamic = "force-dynamic";
 
-// Log para debug - salva os payloads recebidos
+// Log para debug
 const logPayload = (payload: unknown, source: string) => {
     console.log(`[WEBHOOK CONTRACT] Source: ${source}`);
     console.log(`[WEBHOOK CONTRACT] Payload:`, JSON.stringify(payload, null, 2));
 };
+
+// ===========================================
+// DATA PARSING HELPERS
+// ===========================================
+
+/**
+ * Normaliza o nome do pacote a partir da string recebida
+ * Ex: "Pacote Intermediário (R$25,00)" -> "INTERMEDIARIO"
+ */
+function parsePackage(raw: string): ContractPackage {
+    const normalized = raw.toLowerCase();
+
+    if (normalized.includes("intermediário") || normalized.includes("intermediario")) return "INTERMEDIARIO";
+    if (normalized.includes("avançado") || normalized.includes("avancado")) return "AVANCADO";
+    if (normalized.includes("elite")) return "ELITE";
+    if (normalized.includes("pro plus") || normalized.includes("pro_plus")) return "PRO_PLUS";
+    if (normalized.includes("ultra pro") || normalized.includes("ultra_pro") || normalized.includes("ultra")) return "ULTRA_PRO";
+    if (normalized.includes("evolution")) return "EVOLUTION";
+
+    return "INTERMEDIARIO"; // Default
+}
+
+/**
+ * Normaliza a fonte do contrato
+ * Ex: "Anúncio nas redes sociais da UPBOOST" -> "ANUNCIO"
+ */
+function parseSource(raw: string): ContractSource {
+    const normalized = raw.toLowerCase();
+
+    if (normalized.includes("anúncio") || normalized.includes("anuncio")) return "ANUNCIO";
+    if (normalized.includes("indicação") || normalized.includes("indicacao")) return "INDICACAO";
+    if (normalized.includes("influenciador") || normalized.includes("influencer")) return "INFLUENCIADOR";
+    if (normalized.includes("parceiro")) return "PARCEIRO";
+
+    return "ANUNCIO"; // Default
+}
+
+/**
+ * Extrai os adicionais da string recebida
+ * Ex: "Ativação do Windows (R$19,90)" -> ["ATIVACAO_WINDOWS"]
+ * Pode receber múltiplos valores? Vamos assumir que sim, separados por vírgula ou em array.
+ */
+function parseAddons(raw: string | string[]): string[] {
+    if (!raw) return [];
+
+    const rawString = Array.isArray(raw) ? raw.join(",") : raw;
+    const normalized = rawString.toLowerCase();
+    const foundAddons: string[] = [];
+
+    // Mapeamento reverso de labels para keys
+    // ADDON_LABELS: "ATIVACAO_WINDOWS": "Ativação do Windows"
+    // ADDON_PRICES chaves também são válidas
+
+    // Verifica cada chave de addon possível
+    Object.keys(ADDON_LABELS).forEach(key => {
+        const label = ADDON_LABELS[key].toLowerCase();
+        // Verifica se a string raw contém o label (ex: "ativação do windows")
+        if (normalized.includes(label)) {
+            foundAddons.push(key);
+        }
+    });
+
+    return foundAddons;
+}
+
+/**
+ * Parseia string de data no formato "dd/MM/yyyy HH:mm:ss" ou ISO
+ * Ex: "23/01/2026 11:13:28"
+ */
+function parseDateString(raw: string): Date {
+    if (!raw) return new Date();
+
+    // Tentar formato ISO primeiro
+    const isoDate = new Date(raw);
+    if (!isNaN(isoDate.getTime()) && raw.includes("-")) return isoDate;
+
+    // Formato brasileiro: dd/MM/yyyy HH:mm:ss
+    // Regex para capturar partes
+    const match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
+
+    if (match) {
+        const day = parseInt(match[1]);
+        const month = parseInt(match[2]) - 1; // Mês 0-indexado
+        const year = parseInt(match[3]);
+        const hour = parseInt(match[4] || "0");
+        const minute = parseInt(match[5] || "0");
+        const second = parseInt(match[6] || "0");
+
+        return new Date(year, month, day, hour, minute, second);
+    }
+
+    return new Date();
+}
 
 // ===========================================
 // POST - Receber novo contrato
@@ -21,138 +120,82 @@ const logPayload = (payload: unknown, source: string) => {
 export async function POST(request: Request) {
     try {
         const payload = await request.json();
-
-        // Log do payload para debug
         logPayload(payload, request.headers.get("user-agent") || "unknown");
-
-        // Se for apenas um teste, retorna o payload recebido
-        if (payload.test === true || payload.action === "test") {
-            return NextResponse.json({
-                success: true,
-                message: "Webhook recebido com sucesso! Este é um teste.",
-                receivedPayload: payload,
-                expectedFormat: {
-                    clientName: "Nome do Cliente (obrigatório)",
-                    whatsapp: "11999999999 (obrigatório)",
-                    email: "email@exemplo.com (opcional)",
-                    instagram: "@instagram (opcional)",
-                    cpf: "12345678900 (opcional)",
-                    contractDate: "2026-01-23 ou ISO date (opcional, default: hoje)",
-                    package: "INTERMEDIARIO | AVANCADO | ELITE | PRO_PLUS | ULTRA_PRO | EVOLUTION",
-                    source: "ANUNCIO | INDICACAO | INFLUENCIADOR | PARCEIRO",
-                    addons: ["ATIVACAO_WINDOWS", "UPBOOST_PLUS"],
-                    totalValue: 150.00,
-                    termsAccepted: true,
-                    sellerEmail: "vendedor@exemplo.com (opcional)"
-                }
-            });
-        }
 
         // Validação básica
         if (!payload.clientName || !payload.whatsapp) {
             return NextResponse.json(
-                {
-                    success: false,
-                    error: "Campos obrigatórios: clientName, whatsapp",
-                    receivedPayload: payload
-                },
+                { success: false, error: "Campos obrigatórios: clientName, whatsapp" },
                 { status: 400 }
             );
         }
 
-        // Buscar vendedor pelo email (se fornecido)
+        // 1. Identificar usuário (Vendedor ou Admin)
+        // O pedido diz que sellerEmail não é necessário na aba Contratos, 
+        // mas precisamos associar a alguém. Vamos buscar um admin default.
         let userId: string | null = null;
-        if (payload.sellerEmail) {
-            const seller = await prisma.user.findFirst({
-                where: { email: payload.sellerEmail.toLowerCase() },
-            });
-            if (seller) {
-                userId = seller.id;
-            }
-        }
 
-        // Se não encontrou vendedor, busca um admin
+        // Tenta encontrar admin
+        const admin = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: "dherick@upboost.pro" },
+                    { email: "kelwin@upboost.com" },
+                    { role: "ADMIN" }
+                ]
+            },
+        });
+        userId = admin?.id || null;
+
         if (!userId) {
-            const admin = await prisma.user.findFirst({
-                where: {
-                    OR: [
-                        { email: "dherick@upboost.pro" },
-                        { email: "kelwin@upboost.com" },
-                        { role: "ADMIN" }
-                    ]
-                },
-            });
-            userId = admin?.id || null;
+            // Fallback extremo: pega qualquer usuário se não tiver admin (improvável)
+            const anyUser = await prisma.user.findFirst();
+            userId = anyUser?.id || null;
         }
 
         if (!userId) {
             return NextResponse.json(
-                { success: false, error: "Nenhum usuário encontrado para associar o contrato" },
+                { success: false, error: "Nenhum usuário admin encontrado para associar" },
                 { status: 500 }
             );
         }
 
-        // Normalizar dados
+        // 2. Parsing e Normalização
         const normalizedPhone = String(payload.whatsapp).replace(/\D/g, "");
-        const contractDate = payload.contractDate
-            ? new Date(payload.contractDate)
-            : new Date();
+        const contractDate = parseDateString(payload.contractDate);
+        const contractPackage = parsePackage(payload.package || "");
+        const contractSource = parseSource(payload.source || "");
+        const addons = parseAddons(payload.addons || "");
+        const email = payload.email && payload.email !== "" ? payload.email : null;
+        const instagram = payload.instagram && payload.instagram !== "" ? payload.instagram : null;
+        const cpf = payload.CPF || payload.cpf ? String(payload.CPF || payload.cpf).replace(/\D/g, "") : null;
 
-        // Normalizar pacote
-        const packageMap: Record<string, ContractPackage> = {
-            "intermediario": "INTERMEDIARIO",
-            "intermediário": "INTERMEDIARIO",
-            "avancado": "AVANCADO",
-            "avançado": "AVANCADO",
-            "elite": "ELITE",
-            "pro_plus": "PRO_PLUS",
-            "pro plus": "PRO_PLUS",
-            "ultra_pro": "ULTRA_PRO",
-            "ultra pro": "ULTRA_PRO",
-            "ultra": "ULTRA_PRO",
-            "evolution": "EVOLUTION",
-        };
+        // 3. Cálculo de Valor
+        const totalValue = calculateTotalValue(contractPackage, addons);
 
-        const packageKey = String(payload.package || "intermediario").toLowerCase();
-        const contractPackage = packageMap[packageKey] || payload.package as ContractPackage || "INTERMEDIARIO";
-
-        // Normalizar fonte
-        const sourceMap: Record<string, ContractSource> = {
-            "anuncio": "ANUNCIO",
-            "anúncio": "ANUNCIO",
-            "indicacao": "INDICACAO",
-            "indicação": "INDICACAO",
-            "influenciador": "INFLUENCIADOR",
-            "influencer": "INFLUENCIADOR",
-            "parceiro": "PARCEIRO",
-        };
-
-        const sourceKey = String(payload.source || "anuncio").toLowerCase();
-        const contractSource = sourceMap[sourceKey] || payload.source as ContractSource || "ANUNCIO";
-
-        // Criar contrato
+        // 4. Criação do Contrato
         const contract = await prisma.contract.create({
             data: {
                 clientName: payload.clientName,
-                email: payload.email || null,
+                email,
                 whatsapp: normalizedPhone,
-                instagram: payload.instagram || null,
-                cpf: payload.cpf ? String(payload.cpf).replace(/\D/g, "") : null,
+                instagram,
+                cpf,
                 contractDate,
                 source: contractSource,
                 package: contractPackage,
-                addons: Array.isArray(payload.addons) ? payload.addons : [],
-                termsAccepted: payload.termsAccepted === true,
-                totalValue: parseFloat(payload.totalValue) || 0,
+                addons,
+                termsAccepted: true, // Sempre true conforme regra
+                totalValue,
                 userId,
             },
         });
 
-        // Tentar atualizar lead correspondente (se existir)
+        // 5. Atualização de Lead (se existir)
         let leadUpdated = false;
         const lead = await prisma.lead.findFirst({
             where: {
-                phone: { contains: normalizedPhone.slice(-8) },
+                phone: { contains: normalizedPhone.slice(-8) }, // Busca pelos últimos 8 dígitos
             },
         });
 
@@ -161,13 +204,13 @@ export async function POST(request: Request) {
                 where: { id: lead.id },
                 data: {
                     stage: PipelineStage.FINALIZADO,
-                    email: payload.email || lead.email,
-                    instagram: payload.instagram || lead.instagram,
-                    cpf: payload.cpf ? String(payload.cpf).replace(/\D/g, "") : lead.cpf,
+                    email: email || lead.email,
+                    instagram: instagram || lead.instagram,
+                    cpf: cpf || lead.cpf,
                     contractDate,
                     packageType: contractPackage,
-                    addOns: Array.isArray(payload.addons) ? payload.addons.join(", ") : "",
-                    termsAccepted: payload.termsAccepted === true,
+                    addOns: addons.join(", "),
+                    termsAccepted: true,
                 },
             });
             leadUpdated = true;
@@ -175,57 +218,40 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
-            message: "Contrato criado com sucesso!",
+            message: "Contrato criado com sucesso",
             data: {
-                contractId: contract.id,
-                clientName: contract.clientName,
-                whatsapp: contract.whatsapp,
-                package: contract.package,
-                totalValue: Number(contract.totalValue),
-                leadUpdated,
+                id: contract.id,
+                client: contract.clientName,
+                package: PACKAGE_LABELS[contractPackage],
+                value: totalValue,
+                leadUpdated
             }
         });
 
     } catch (error) {
-        console.error("[WEBHOOK CONTRACT] Erro:", error);
+        console.error("[WEBHOOK ERROR]", error);
         return NextResponse.json(
-            {
-                success: false,
-                error: error instanceof Error ? error.message : "Erro interno",
-            },
+            { success: false, error: error instanceof Error ? error.message : "Erro interno" },
             { status: 500 }
         );
     }
 }
 
-// ===========================================
-// GET - Verificar se o webhook está ativo
-// ===========================================
-
+// GET para documentação/teste
 export async function GET() {
     return NextResponse.json({
         success: true,
-        message: "Webhook de contratos está ativo!",
-        endpoint: "/api/webhooks/contracts",
-        method: "POST",
-        expectedFormat: {
-            clientName: "Nome do Cliente (obrigatório)",
-            whatsapp: "11999999999 (obrigatório)",
-            email: "email@exemplo.com (opcional)",
-            instagram: "@instagram (opcional)",
-            cpf: "12345678900 (opcional)",
-            contractDate: "2026-01-23 ou ISO date (opcional)",
-            package: "INTERMEDIARIO | AVANCADO | ELITE | PRO_PLUS | ULTRA_PRO | EVOLUTION",
-            source: "ANUNCIO | INDICACAO | INFLUENCIADOR | PARCEIRO",
-            addons: ["ATIVACAO_WINDOWS", "UPBOOST_PLUS"],
-            totalValue: 150.00,
-            termsAccepted: true,
-            sellerEmail: "vendedor@exemplo.com (opcional)"
-        },
-        testPayload: {
-            test: true,
-            clientName: "Teste Webhook",
-            whatsapp: "11999999999"
+        message: "Webhook Ativo. Envie POST com JSON.",
+        examplePayload: {
+            "clientName": "Fulano de Tal",
+            "whatsapp": "34999999999",
+            "email": "fulano@email.com",
+            "instagram": "@fulano",
+            "CPF": "12345678900",
+            "contractDate": "23/01/2026 11:13:28",
+            "package": "Pacote Intermediário (R$25,00)",
+            "source": "Anúncio nas redes sociais",
+            "addons": "Ativação do Windows (R$19,90)"
         }
     });
 }
