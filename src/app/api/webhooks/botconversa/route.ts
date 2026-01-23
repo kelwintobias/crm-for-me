@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
             name,
             phone,
             source: finalSource,
-            stage: "NOVO_LEAD", // Alterado para NOVO_LEAD como padrão de entrada
+            stage: "EM_NEGOCIACAO", // Alterado para EM_NEGOCIACAO conforme solicitado
             userId: userId
         });
 

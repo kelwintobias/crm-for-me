@@ -35,9 +35,8 @@ function mapContractSourceToLeadSource(source: ContractSource): LeadSource {
     const map: Record<string, LeadSource> = {
         "ANUNCIO": "ANUNCIO",
         "INDICACAO": "INDICACAO",
-        "INFLUENCIADOR": "INFLUENCER", // Correção aqui: O Enum do Lead é INFLUENCER
+        "INFLUENCIADOR": "INFLUENCER",
         "PARCEIRO": "PAGINA_PARCEIRA",
-        // Adicionando mapeamento reverso caso venha string direta
         "INFLUENCER": "INFLUENCER"
     };
     return map[source] || "OUTRO";
@@ -48,7 +47,6 @@ function parseValues(raw: string): number {
 }
 
 function parseDate(raw: string): Date {
-    // dd/MM/yyyy HH:mm:ss
     const match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
     if (match) {
         return new Date(
@@ -64,7 +62,7 @@ function parseDate(raw: string): Date {
 }
 
 async function main() {
-    console.log("Iniciando importação de contratos do CSV...");
+    console.log("Iniciando SINCRONIZAÇÃO de contratos do CSV...");
 
     if (!fs.existsSync(CSV_PATH)) {
         console.error("Arquivo CSV não encontrado:", CSV_PATH);
@@ -78,9 +76,9 @@ async function main() {
         trim: true,
     });
 
-    console.log(`Encontrados ${records.length} registros no CSV.`);
+    console.log(`CSV contém ${records.length} registros.`);
 
-    // Buscar admin para associar
+    // Admin
     let admin = await prisma.user.findFirst({
         where: { email: "kelwin@upboost.com" }
     });
@@ -91,13 +89,14 @@ async function main() {
     }
 
     if (!admin) {
-        console.error("Nenhum admin encontrado para associar contratos.");
+        console.error("Admin não encontrado.");
         return;
     }
     const userId = admin.id;
 
+    const validContractIds: string[] = [];
     let createdCount = 0;
-    let skippedCount = 0;
+    let updatedCount = 0; // Se precisasse atualizar
 
     for (const row of records) {
         try {
@@ -112,10 +111,7 @@ async function main() {
             const origemStr = row["ORIGEM"];
             const valorStr = row["VALOR"];
 
-            if (!whatsapp) {
-                console.warn(`Registro sem WhatsApp ignorado: ${nome}`);
-                continue;
-            }
+            if (!whatsapp) continue;
 
             const contractDate = parseDate(dataStr);
             const totalValue = parseValues(valorStr);
@@ -127,16 +123,16 @@ async function main() {
                 : [];
 
             // 1. Verificar se contrato existe
-            const existingContract = await prisma.contract.findFirst({
+            let contract = await prisma.contract.findFirst({
                 where: {
                     whatsapp: whatsapp,
                     contractDate: contractDate,
                 }
             });
 
-            if (!existingContract) {
-                // 2. Criar Contrato
-                await prisma.contract.create({
+            if (!contract) {
+                // Criar
+                contract = await prisma.contract.create({
                     data: {
                         clientName: nome,
                         email: email,
@@ -154,11 +150,13 @@ async function main() {
                 });
                 createdCount++;
             } else {
-                skippedCount++;
+                // Se quisessemos atualizar valores, seria aqui.
+                // Vamos assumir que se existe, está certo (mas adicionamos ID na lista de validos)
             }
 
-            // 3. Criar ou Atualizar Lead (SEMPRE)
-            // Lógica para garantir que apareça em Pessoas/Finalizado
+            validContractIds.push(contract.id);
+
+            // 3. Sync Lead (Sempre)
             const phoneSuffix = whatsapp.slice(-8);
             let lead = await prisma.lead.findFirst({
                 where: {
@@ -180,34 +178,38 @@ async function main() {
                 packageType: pack,
                 addOns: addonsList.join(", "),
                 termsAccepted: true,
+                // userId mantido
             };
 
             if (lead) {
                 await prisma.lead.update({
                     where: { id: lead.id },
-                    data: {
-                        ...leadData,
-                        userId: lead.userId
-                    }
+                    data: { ...leadData, userId: lead.userId }
                 });
             } else {
                 await prisma.lead.create({
-                    data: {
-                        ...leadData,
-                        userId: userId
-                    }
+                    data: { ...leadData, userId: userId }
                 });
             }
 
         } catch (err) {
-            console.error(`Erro ao processar linha:`, row, err);
+            console.error(`Erro processando linha: ${err}`);
         }
     }
 
-    console.log("Importação concluída!");
-    console.log(`Contratos criados: ${createdCount}`);
-    console.log(`Contratos existentes (ignorados): ${skippedCount}`);
-    // Leads são sempre atualizados/criados, então não conto explicitamente, mas roda para todos.
+    // CLEANUP
+    console.log("Verificando contratos extras no banco de dados...");
+    const cleanup = await prisma.contract.deleteMany({
+        where: {
+            id: { notIn: validContractIds }
+        }
+    });
+
+    console.log(`Processo Concluído.`);
+    console.log(`CSV Total: ${records.length}`);
+    console.log(`Contratos Criados: ${createdCount}`);
+    console.log(`Contratos Mantidos: ${validContractIds.length - createdCount}`);
+    console.log(`Contratos Deletados (não estavam no CSV): ${cleanup.count}`);
 }
 
 main()
