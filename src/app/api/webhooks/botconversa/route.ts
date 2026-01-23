@@ -25,23 +25,51 @@ function mapSource(sourceText: string): LeadSource {
     return "OUTRO";
 }
 
+// Log para debug
+const logPayload = (payload: unknown, source: string) => {
+    console.log(`[WEBHOOK BOTCONVERSA] Source: ${source}`);
+    console.log(`[WEBHOOK BOTCONVERSA] Payload:`, JSON.stringify(payload, null, 2));
+};
+
 export async function POST(req: NextRequest) {
     try {
         // Parse do Body
         const body = await req.json();
-        const { name, phone, source } = body;
+
+        // Log do payload
+        logPayload(body, req.headers.get("user-agent") || "unknown");
+
+        // Teste de conexão
+        if (body.test === true || body.action === "test") {
+            return NextResponse.json({
+                success: true,
+                message: "Webhook BotConversa ativo!",
+                received: body
+            });
+        }
+
+        // Tenta extrair campos de diferentes formatos comuns
+        const name = body.name ||
+            (body.first_name ? `${body.first_name} ${body.last_name || ""}`.trim() : null) ||
+            body.fullName ||
+            "Lead sem Nome";
+
+        let phone = body.phone || body.phone_number || body.whatsapp || body.celular || "";
+        // Normaliza telefone (remove não-dígitos)
+        phone = String(phone).replace(/\D/g, "");
+
+        const source = body.source || body.origem || "OUTRO";
 
         // Validação básica
-        if (!name || !phone) {
+        if (!phone) {
+            console.error("[WEBHOOK BOTCONVERSA] Erro: Telefone não encontrado no payload");
             return NextResponse.json(
-                { success: false, error: "Name and phone are required" },
+                { success: false, error: "Phone number is required" },
                 { status: 400 }
             );
         }
 
         // 3. Mapeamento da Origem
-        // Se o cliente mandar "source" mapeado, usa ele. Se mandar texto livre, tentamos mapear.
-        // Assumimos que o BotConversa pode mandar algo como "Anúncio UPBOOST" no campo source.
         let finalSource: LeadSource;
         const knownSources = ["INSTAGRAM", "INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "OUTRO"];
 
@@ -52,44 +80,52 @@ export async function POST(req: NextRequest) {
         }
 
         // 4. Buscar usuário padrão (Admin) para atribuir o lead
-        // Como é webhook, não tem usuário logado. Atribuímos ao primeiro admin encontrado.
         const adminUser = await prisma.user.findFirst({
-            where: { role: "ADMIN" },
+            where: {
+                OR: [
+                    { role: "ADMIN" },
+                    { email: "dherick@upboost.pro" },
+                    { email: "kelwin@upboost.com" }
+                ]
+            },
         });
 
-        if (!adminUser) {
+        let userId = adminUser?.id;
+
+        if (!userId) {
             // Fallback: pega qualquer usuário se não tiver admin
             const anyUser = await prisma.user.findFirst();
             if (!anyUser) {
+                console.error("[WEBHOOK BOTCONVERSA] Erro: Nenhum usuário encontrado no CRM");
                 return NextResponse.json(
                     { success: false, error: "No users found in CRM to assign lead" },
                     { status: 500 }
                 );
             }
-            // Usa o primeiro usuário encontrado
-            await createLeadService({
-                name,
-                phone,
-                source: finalSource,
-                stage: "EM_NEGOCIACAO",
-                userId: anyUser.id
-            });
-        } else {
-            await createLeadService({
-                name,
-                phone,
-                source: finalSource,
-                stage: "EM_NEGOCIACAO",
-                userId: adminUser.id
-            });
+            userId = anyUser.id;
         }
 
-        return NextResponse.json({ success: true, mappedSource: finalSource });
+        // Cria o lead
+        const lead = await createLeadService({
+            name,
+            phone,
+            source: finalSource,
+            stage: "NOVO_LEAD", // Alterado para NOVO_LEAD como padrão de entrada
+            userId: userId
+        });
+
+        console.log(`[WEBHOOK BOTCONVERSA] Lead criado com sucesso: ${lead.id} (${lead.name})`);
+
+        return NextResponse.json({
+            success: true,
+            leadId: lead.id,
+            mappedSource: finalSource
+        });
 
     } catch (error) {
-        console.error("Webhook Error:", error);
+        console.error("[WEBHOOK BOTCONVERSA] Erro Interno:", error);
         return NextResponse.json(
-            { success: false, error: "Internal Server Error" },
+            { success: false, error: "Internal Server Error", details: error instanceof Error ? error.message : "Unknown" },
             { status: 500 }
         );
     }
