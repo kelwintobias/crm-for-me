@@ -9,6 +9,7 @@ interface HeaderProps {
   user: {
     name: string | null;
     email: string;
+    role: string;
   };
   onNewLead?: () => void;
   onSearchClick?: () => void;

@@ -12,10 +12,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 
+import Link from "next/link";
+
 interface UserMenuProps {
   user: {
     name: string | null;
     email: string;
+    role: string;
   };
 }
 
@@ -40,7 +43,7 @@ export function UserMenu({ user }: UserMenuProps) {
               {user.name || user.email.split("@")[0]}
             </p>
             <p className="text-xs text-text-secondary truncate max-w-[150px]">
-              {user.email}
+              {user.role === "ADMIN" ? "Administrador" : "Vendedor"}
             </p>
           </div>
         </button>
@@ -48,12 +51,23 @@ export function UserMenu({ user }: UserMenuProps) {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <UserIcon className="mr-2 h-4 w-4" />
-          <span>Perfil</span>
-        </DropdownMenuItem>
+
+        {user.role === "ADMIN" ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin/users" className="cursor-pointer">
+              <UserIcon className="mr-2 h-4 w-4" />
+              <span>Meu Perfil (Gestão)</span>
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled>
+            <UserIcon className="mr-2 h-4 w-4" />
+            <span>Meu Perfil</span>
+          </DropdownMenuItem>
+        )}
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} className="text-red-400 focus:text-red-400">
+        <DropdownMenuItem onClick={handleSignOut} className="text-red-400 focus:text-red-400 cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sair</span>
         </DropdownMenuItem>
