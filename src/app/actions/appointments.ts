@@ -499,6 +499,7 @@ export async function getAllAppointments() {
         duration: true,
         canceledAt: true,
         createdAt: true,
+        userId: true, // Para filtrar por vendedor no dashboard
       },
       orderBy: { scheduledAt: "desc" },
     });
@@ -512,6 +513,7 @@ export async function getAllAppointments() {
         duration: apt.duration,
         canceledAt: apt.canceledAt?.toISOString() || null,
         createdAt: apt.createdAt.toISOString(),
+        userId: apt.userId,
       })),
     };
   } catch (error) {

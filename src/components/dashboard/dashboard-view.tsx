@@ -160,6 +160,7 @@ export interface PlainAppointmentData {
   duration: number;
   canceledAt: string | null;
   createdAt: string;
+  userId?: string; // Para filtrar por vendedor
 }
 
 interface DashboardViewProps {
