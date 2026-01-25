@@ -307,13 +307,12 @@ export function EditLeadModal({
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       required
                       disabled={loading}
-                      className={`h-11 flex-1 bg-white/[0.03] focus:border-brand-accent/50 input-glow font-mono transition-all ${
-                        phoneError
-                          ? "border-red-500/50 focus:border-red-500"
-                          : phone.length >= 10
-                            ? "border-emerald-500/50"
-                            : "border-white/10"
-                      }`}
+                      className={`h-11 flex-1 bg-white/[0.03] focus:border-brand-accent/50 input-glow font-mono transition-all ${phoneError
+                        ? "border-red-500/50 focus:border-red-500"
+                        : phone.length >= 10
+                          ? "border-emerald-500/50"
+                          : "border-white/10"
+                        }`}
                     />
                     <Button
                       type="button"
@@ -400,6 +399,7 @@ export function EditLeadModal({
                           Anúncio
                         </span>
                       </SelectItem>
+
                       <SelectItem value="OUTRO" className="focus:bg-brand-accent/20">
                         <span className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-gray-500" />
@@ -747,6 +747,6 @@ export function EditLeadModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Dialog>
+    </Dialog >
   );
 }

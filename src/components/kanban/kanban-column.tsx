@@ -183,15 +183,16 @@ function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef
   );
 }
 
-// PERF: Memo otimizado
+// PERF: Memo otimizado - Compara referencias dos leads (funciona pq atualizamos leads imutavelmente)
 export const KanbanColumn = memo(KanbanColumnInner, (prevProps, nextProps) => {
   if (prevProps.stage !== nextProps.stage) return false;
   if (prevProps.onLeadClick !== nextProps.onLeadClick) return false;
   if (prevProps.onDragStart !== nextProps.onDragStart) return false;
   if (prevProps.leads.length !== nextProps.leads.length) return false;
 
+  // Compara referencia dos objetos (muito mais rapido que deep equals)
   for (let i = 0; i < prevProps.leads.length; i++) {
-    if (prevProps.leads[i].id !== nextProps.leads[i].id) return false;
+    if (prevProps.leads[i] !== nextProps.leads[i]) return false;
   }
 
   return true;

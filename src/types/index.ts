@@ -134,8 +134,9 @@ export const SOURCE_BADGE_VARIANTS: Record<
   PAGINA_PARCEIRA: "parceira",
   INFLUENCER: "influencer",
   ANUNCIO: "anuncio",
-  GOOGLE: "secondary",
   OUTRO: "secondary",
+  // @ts-ignore - Fallback for legacy Google leads
+  GOOGLE: "secondary",
 };
 
 // Cores dos stages para UI
