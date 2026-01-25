@@ -5,7 +5,7 @@ import type { PipelineStage } from "@prisma/client";
 import { LeadCard } from "./lead-card";
 import { STAGE_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
-import { Users, MessageSquare, Calendar, Headphones, CheckCircle, CheckCheck } from "lucide-react";
+import { Users, MessageSquare, Calendar, Headphones, CheckCircle, CheckCheck, XCircle } from "lucide-react";
 import { PlainLead } from "@/types";
 
 interface KanbanColumnProps {
@@ -52,6 +52,12 @@ const COLUMN_CONFIG: Record<PipelineStage, {
     borderColor: "border-t-cyan-500",
     icon: <CheckCircle className="w-4 h-4" />,
     gradient: "from-cyan-500/20 to-cyan-500/0",
+  },
+  PERDIDO: {
+    color: "text-red-400",
+    borderColor: "border-t-red-500",
+    icon: <XCircle className="w-4 h-4" />,
+    gradient: "from-red-500/20 to-red-500/0",
   },
   FINALIZADO: {
     color: "text-green-400",
@@ -134,8 +140,8 @@ function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef
         </div>
       </div>
 
-      {/* Cards container */}
-      <div className="flex-1 p-3 space-y-3 overflow-y-auto scrollbar-thin">
+      {/* Cards container - PERF: contain para isolar repaints */}
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto scrollbar-thin" style={{ contain: 'layout paint' }}>
         {leads.map((lead) => (
           <LeadCard
             key={lead.id}

@@ -18,6 +18,7 @@ enum LeadSource {
   PAGINA_PARCEIRA
   INFLUENCER
   ANUNCIO
+  GOOGLE
   OUTRO
 }
 
@@ -29,6 +30,8 @@ enum PlanType {
   PRO_PLUS
   ULTRA_PRO
   EVOLUTION
+  PLANO_UNICO
+  PLANO_MENSAL
 }
 
 enum PipelineStage {
@@ -37,6 +40,7 @@ enum PipelineStage {
   AGENDADO
   EM_ATENDIMENTO
   POS_VENDA
+  PERDIDO
   FINALIZADO
 }
 
@@ -75,6 +79,11 @@ enum ContractPackage {
   EVOLUTION
 }
 
+enum DebtorStatus {
+  PENDENTE
+  PAGO
+}
+
 // --------------------------------------
 // MODELS
 // --------------------------------------
@@ -99,6 +108,7 @@ model User {
   appointmentHistory AppointmentHistory[]   @relation("UserAppointmentHistory")
   contracts          Contract[]             @relation("UserContracts")
   fixedCosts         FixedCost[]            @relation("UserFixedCosts")
+  debtors            Debtor[]               @relation("UserDebtors")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,6 +129,7 @@ model Lead {
   value     Decimal       @default(0) @db.Decimal(10, 2)
 
   stage     PipelineStage @default(NOVO_LEAD)
+  lostReason String?
   notes     String?  @db.Text
 
   // Campos do "Espelho da Planilha"
@@ -134,6 +145,8 @@ model Lead {
   user      User     @relation("UserLeads", fields: [userId], references: [id])
 
   appointments Appointment[]
+  
+  inPipeline Boolean @default(true) // Controla visibilidade no Kanban
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -255,4 +268,43 @@ model FixedCost {
   @@index([userId])
   @@index([date])
   @@map("fixed_costs")
+}
+
+model Debtor {
+  id              String       @id @default(uuid())
+  
+  clientName      String
+  phone           String
+  
+  amountPaid      Decimal      @db.Decimal(10, 2)
+  amountRemaining Decimal      @db.Decimal(10, 2)
+  dueDate         DateTime?    // Data combinada para pagamento
+  
+  notes           String?      @db.Text
+  status          DebtorStatus @default(PENDENTE)
+  
+  // Relacionamento
+  userId          String
+  user            User         @relation("UserDebtors", fields: [userId], references: [id])
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  @@index([status])
+  @@map("debtors")
+}
+
+model WebhookLog {
+  id        String   @id @default(uuid())
+  provider  String   // ex: "botconversa", "pluga"
+  event     String?  // Tipo do evento
+  payload   String   @db.Text // JSON completo recebido
+  status    String   // "SUCCESS", "ERROR"
+  error     String?  @db.Text
+  
+  createdAt DateTime @default(now())
+
+  @@index([provider])
+  @@index([createdAt])
+  @@map("webhook_logs")
 }

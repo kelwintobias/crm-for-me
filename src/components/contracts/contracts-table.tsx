@@ -64,6 +64,7 @@ const ADDON_LABELS: Record<string, string> = {
 
 export interface PlainContract {
     id: string;
+    userId: string;
     clientName: string;
     email: string | null;
     whatsapp: string;

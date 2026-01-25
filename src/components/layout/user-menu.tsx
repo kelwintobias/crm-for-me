@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, FileText } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 
 import Link from "next/link";
@@ -58,6 +58,25 @@ export function UserMenu({ user }: UserMenuProps) {
             <span>Meu Perfil</span>
           </Link>
         </DropdownMenuItem>
+
+        {user.role === "ADMIN" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Administração</DropdownMenuLabel>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/users" className="cursor-pointer">
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Usuários</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/logs" className="cursor-pointer">
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Logs do Sistema</span>
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="text-red-400 focus:text-red-400 cursor-pointer">

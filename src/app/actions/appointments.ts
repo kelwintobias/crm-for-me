@@ -46,18 +46,12 @@ async function getCurrentUser() {
   return dbUser;
 }
 
-// Verifica se horário está dentro do expediente (9h-18h, seg-sex)
+// Verifica se horário é válido (permite qualquer horário e dia)
 function isWithinBusinessHours(date: Date): boolean {
-  const hour = date.getHours();
-  const day = date.getDay(); // 0=domingo, 6=sábado
-
-  // Segunda a sexta (1-5)
-  if (day === 0 || day === 6) return false;
-
-  // 9h às 18h (última análise começa às 17h)
-  if (hour < 9 || hour >= 18) return false;
-
-  return true;
+  // Permite agendamento em qualquer horário e dia da semana
+  // Apenas verifica se a data não está no passado
+  const now = new Date();
+  return date >= now;
 }
 
 // Verifica conflitos de horário
@@ -118,7 +112,7 @@ export async function createAppointment(data: unknown) {
     if (!isWithinBusinessHours(scheduledAt)) {
       return {
         success: false,
-        error: "Horário fora do expediente (9h-18h, seg-sex)"
+        error: "Não é possível agendar para datas no passado"
       };
     }
 
@@ -201,7 +195,7 @@ export async function rescheduleAppointment(data: unknown) {
     if (!isWithinBusinessHours(scheduledAt)) {
       return {
         success: false,
-        error: "Horário fora do expediente (9h-18h, seg-sex)"
+        error: "Não é possível remarcar para datas no passado"
       };
     }
 
@@ -358,14 +352,14 @@ export async function getAvailableSlots(date: string) {
       },
     });
 
-    // Gera slots de 30 em 30 minutos das 9h às 18h
+    // Gera slots de 30 em 30 minutos das 6h às 22h (horário flexível)
     const slots: Array<{
       time: string;
       available: boolean;
       scheduledAt: string;
     }> = [];
 
-    for (let hour = 9; hour < 18; hour++) {
+    for (let hour = 6; hour < 23; hour++) {
       for (const minute of [0, 30]) {
         const slotTime = new Date(targetDate);
         slotTime.setHours(hour, minute, 0, 0);

@@ -47,7 +47,11 @@
       "Bash(npx next:*)",
       "Bash(powershell -Command \"Invoke-RestMethod -Uri ''https://crmupboost.vercel.app/api/webhooks/botconversa'' -Method POST -ContentType ''application/json'' -Body ''{\"\"name\"\": \"\"Carlos Teste Final\"\", \"\"phone\"\": \"\"11944440000\"\", \"\"source\"\": \"\"Indicação\"\"}''\")",
       "WebFetch(domain:docs.google.com)",
-      "WebFetch(domain:doc-14-7o-sheets.googleusercontent.com)"
+      "WebFetch(domain:doc-14-7o-sheets.googleusercontent.com)",
+      "Bash(ls -la \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\kanban\"\" && echo \"---\" && ls -la \"C:UserskelwiDocumentscrm-for-mesrcappactions\"\")",
+      "Bash(if not exist \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\webhook-logs\" mkdir \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\webhook-logs\")",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)"
     ]
   }
 }

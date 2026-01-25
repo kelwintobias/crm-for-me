@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { subMonths, subWeeks, subDays, format, startOfMonth, endOfMonth, startOfDay, endOfDay, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getCurrentUser } from "./leads";
 
 // ============================================
 // AUTENTICACAO
@@ -56,6 +57,7 @@ export async function getDashboardMetrics() {
       appointmentsLast4Weeks,
       leadsAguardando,
       totalAppointments,
+      leadsAtendidosHoje,
     ] = await Promise.all([
       // 1. KPI: Faturamento Total (soma de POS_VENDA + FINALIZADO)
       prisma.lead.aggregate({
@@ -184,10 +186,11 @@ export async function getDashboardMetrics() {
         },
       }),
 
-      // 14. Total de vendidos
+      // 14. Total de convertidos (leads que passaram de EM_NEGOCIACAO para AGENDADO ou além)
+      // Conversão = lead que avançou para AGENDADO ou estágios posteriores
       prisma.lead.count({
         where: {
-          stage: { in: ["POS_VENDA", "FINALIZADO"] },
+          stage: { in: ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"] },
           deletedAt: null,
         },
       }),
@@ -250,20 +253,32 @@ export async function getDashboardMetrics() {
 
       // 22. Total de agendamentos (para calcular taxas)
       prisma.appointment.count(),
+
+      // 23. Leads atendidos hoje (baseado em updatedAt)
+      // Se o card foi atualizado hoje, significa que o vendedor atendeu o lead
+      prisma.lead.count({
+        where: {
+          deletedAt: null,
+          updatedAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
     ]);
 
     // Processa dados do grafico de evolucao mensal
+    // Usa yyyy-MM como chave para ordenação cronológica correta
     const monthlyRevenueMap = new Map<
       string,
-      { name: string; unico: number; mensal: number; total: number }
+      { sortKey: string; name: string; unico: number; mensal: number; total: number }
     >();
 
     // Inicializa os ultimos 3 meses para garantir que aparecem no grafico
     for (let i = 2; i >= 0; i--) {
       const date = subMonths(new Date(), i);
-      const monthKey = format(date, "MMM", { locale: ptBR }).toUpperCase();
-      monthlyRevenueMap.set(monthKey, {
-        name: monthKey,
+      const sortKey = format(date, "yyyy-MM"); // Para ordenação cronológica
+      const monthName = format(date, "MMM/yy", { locale: ptBR }).toUpperCase(); // Ex: MAI/25, JAN/26
+      monthlyRevenueMap.set(sortKey, {
+        sortKey,
+        name: monthName,
         unico: 0,
         mensal: 0,
         total: 0,
@@ -272,18 +287,20 @@ export async function getDashboardMetrics() {
 
     // Preenche com dados reais
     revenueByMonth.forEach((lead) => {
-      const monthKey = format(lead.createdAt, "MMM", { locale: ptBR }).toUpperCase();
+      const sortKey = format(lead.createdAt, "yyyy-MM");
+      const monthName = format(lead.createdAt, "MMM/yy", { locale: ptBR }).toUpperCase();
 
-      if (!monthlyRevenueMap.has(monthKey)) {
-        monthlyRevenueMap.set(monthKey, {
-          name: monthKey,
+      if (!monthlyRevenueMap.has(sortKey)) {
+        monthlyRevenueMap.set(sortKey, {
+          sortKey,
+          name: monthName,
           unico: 0,
           mensal: 0,
           total: 0,
         });
       }
 
-      const entry = monthlyRevenueMap.get(monthKey)!;
+      const entry = monthlyRevenueMap.get(sortKey)!;
       const val = Number(lead.value);
 
       // Agrupa por tipo de plano (basicos vs premium)
@@ -298,8 +315,10 @@ export async function getDashboardMetrics() {
       entry.total += val;
     });
 
-    // Converte para array ordenado cronologicamente
-    const revenueChartData = Array.from(monthlyRevenueMap.values());
+    // Converte para array ordenado cronologicamente pela sortKey (yyyy-MM)
+    const revenueChartData = Array.from(monthlyRevenueMap.values())
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      .map(({ name, unico, mensal, total }) => ({ name, unico, mensal, total }));
 
     // Formata distribuicao para o PieChart
     const PLAN_DISPLAY_LABELS: Record<string, string> = {
@@ -447,6 +466,7 @@ export async function getDashboardMetrics() {
           scheduledToday,
           canceledToday,
           noShowToday,
+          leadsAtendidosHoje, // Leads com updatedAt hoje
         },
       },
     };
@@ -518,5 +538,157 @@ export async function getDetailedMetrics() {
   } catch (error) {
     console.error("Erro ao buscar metricas detalhadas:", error);
     return { success: false, error: "Erro ao carregar metricas" };
+  }
+}
+
+// ============================================
+// SELLER METRICS (Métricas pessoais do vendedor)
+// ============================================
+
+export async function getSellerMetrics(userId: string) {
+  try {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const monthStart = startOfMonth(now);
+
+    const [
+      leadsWorkedToday,
+      leadsWorkedMonth,
+      pipelineByStage,
+      totalLeads,
+      convertedLeads,
+    ] = await Promise.all([
+      prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+          updatedAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+      prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+          updatedAt: { gte: monthStart },
+        },
+      }),
+      prisma.lead.groupBy({
+        by: ["stage"],
+        _count: { id: true },
+        where: {
+          userId,
+          deletedAt: null,
+        },
+      }),
+      prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+        },
+      }),
+      // Convertidos = leads que avançaram para AGENDADO ou além
+      prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+          stage: { in: ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"] },
+        },
+      }),
+    ]);
+
+    // Taxa de conversão = leads que chegaram em AGENDADO+ / total de leads
+    const taxaConversao = totalLeads > 0
+      ? Math.round((convertedLeads / totalLeads) * 100)
+      : 0;
+
+    const pipeline = pipelineByStage.map((s) => ({
+      stage: s.stage,
+      count: s._count.id,
+    }));
+
+    return {
+      success: true,
+      data: {
+        leadsWorkedToday,
+        leadsWorkedMonth,
+        pipeline,
+        totalLeads,
+        convertedLeads,
+        taxaConversao,
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao buscar métricas do vendedor:", error);
+    return { success: false, error: "Erro ao carregar métricas" };
+  }
+}
+
+// ============================================
+// ADMIN TEAM METRICS (Métricas do time)
+// ============================================
+
+export async function getAdminTeamMetrics() {
+  try {
+    const user = await getCurrentUser();
+    if (user.role !== "ADMIN") {
+      return { success: false, error: "Acesso negado" };
+    }
+
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+
+    const [
+      sellers,
+      leadsPerSeller,
+      conversionsPerSeller,
+    ] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: "VENDEDOR" },
+        select: { id: true, name: true, email: true },
+      }),
+      prisma.lead.groupBy({
+        by: ["userId"],
+        _count: { id: true },
+        where: {
+          deletedAt: null,
+          updatedAt: { gte: monthStart },
+        },
+      }),
+      // Conversões = leads que avançaram para AGENDADO ou além
+      prisma.lead.groupBy({
+        by: ["userId"],
+        _count: { id: true },
+        where: {
+          deletedAt: null,
+          stage: { in: ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"] },
+          updatedAt: { gte: monthStart },
+        },
+      }),
+    ]);
+
+    const teamData = sellers.map((seller) => {
+      const leads = leadsPerSeller.find((l) => l.userId === seller.id);
+      const conversions = conversionsPerSeller.find((c) => c.userId === seller.id);
+      const leadsCount = leads?._count.id || 0;
+      const conversionsCount = conversions?._count.id || 0;
+      const taxa = leadsCount > 0 ? Math.round((conversionsCount / leadsCount) * 100) : 0;
+
+      return {
+        id: seller.id,
+        name: seller.name || seller.email,
+        leadsMonth: leadsCount,
+        conversions: conversionsCount,
+        taxaConversao: taxa,
+      };
+    });
+
+    return {
+      success: true,
+      data: { team: teamData },
+    };
+  } catch (error) {
+    console.error("Erro ao buscar métricas do time:", error);
+    return { success: false, error: "Erro ao carregar métricas" };
   }
 }

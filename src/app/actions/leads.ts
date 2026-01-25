@@ -31,6 +31,8 @@ const PLAN_PRICES: Record<PlanType, number> = {
   PRO_PLUS: 75.00,
   ULTRA_PRO: 100.00,
   EVOLUTION: 150.00,
+  PLANO_UNICO: 35.90,
+  PLANO_MENSAL: 45.90,
 };
 
 // Funcao helper para obter o valor do plano
@@ -119,7 +121,7 @@ export type CreateLeadInput = {
 export async function createLeadService(input: CreateLeadInput) {
   // Se userId não for fornecido, tenta pegar do usuário logado
   let userId = input.userId;
-  
+
   if (!userId) {
     try {
       const user = await getCurrentUser();
@@ -271,7 +273,7 @@ export async function updateLead(data: {
 // MOVER LEAD NO KANBAN (Atualizar Stage)
 // ============================================
 
-export async function updateLeadStage(id: string, stage: PipelineStage) {
+export async function updateLeadStage(id: string, stage: PipelineStage, lostReason?: string) {
   try {
     await getCurrentUser();
 
@@ -288,6 +290,12 @@ export async function updateLeadStage(id: string, stage: PipelineStage) {
 
     // LOGICA DE CONSISTENCIA ao mover no Kanban
     const updateData: Record<string, unknown> = { stage };
+
+    if (stage === 'PERDIDO' && lostReason) {
+      updateData.lostReason = lostReason;
+    } else if (stage !== 'PERDIDO') {
+      updateData.lostReason = null; // Clear reason if moved out of PERDIDO
+    }
 
     const lead = await prisma.lead.update({
       where: { id },
@@ -344,6 +352,7 @@ export async function getLeads() {
     const leads = await prisma.lead.findMany({
       where: {
         deletedAt: null,
+        inPipeline: true,
       },
       orderBy: {
         createdAt: "desc",

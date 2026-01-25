@@ -7,6 +7,7 @@ import { getFixedCosts } from "./actions/fixed-costs";
 import { getContractMetrics } from "./actions/contract-metrics";
 import { getAllAppointments } from "./actions/appointments";
 import { getPessoasData } from "./actions/pessoas";
+import { getDebtors } from "./actions/debtors";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 export default async function HomePage() {
@@ -40,7 +41,7 @@ export default async function HomePage() {
   }
 
   // Busca paralela de dados para performance
-  const [leadsResult, dashboardResult, contractsResult, fixedCostsResult, contractMetricsResult, appointmentsResult, pessoasData] = await Promise.all([
+  const [leadsResult, dashboardResult, contractsResult, fixedCostsResult, contractMetricsResult, appointmentsResult, pessoasData, debtorsResult] = await Promise.all([
     getLeads(),
     getDashboardMetrics(),
     getContracts(),
@@ -48,6 +49,7 @@ export default async function HomePage() {
     getContractMetrics(),
     getAllAppointments(),
     getPessoasData(),
+    getDebtors(),
   ]);
 
   const rawLeads = leadsResult.data || [];
@@ -55,12 +57,21 @@ export default async function HomePage() {
 
   const contracts = contractsResult.data || [];
 
+  // OTIMIZAÇÃO: Criar Map de contratos por telefone para O(1) lookup
+  // Antes: O(n²) com filter() para cada lead
+  // Agora: O(n) para criar Map + O(1) para cada lookup
+  const contractsByPhone = new Map<string, typeof contracts>();
+  for (const contract of contracts) {
+    const phone = contract.whatsapp.replace(/\D/g, "");
+    const existing = contractsByPhone.get(phone) || [];
+    existing.push(contract);
+    contractsByPhone.set(phone, existing);
+  }
+
   // CONVERSÃO DE DADOS (Decimal -> Number) + Enriquecimento com histórico de contratos
   const leads = rawLeads.map((lead) => {
     const leadPhone = lead.phone.replace(/\D/g, "");
-    const leadContracts = contracts.filter(
-      (c) => c.whatsapp.replace(/\D/g, "") === leadPhone
-    );
+    const leadContracts = contractsByPhone.get(leadPhone) || []; // O(1) lookup
 
     return {
       ...lead,
@@ -76,6 +87,7 @@ export default async function HomePage() {
     };
   });
   const fixedCosts = fixedCostsResult.data || [];
+  const debtors = "data" in debtorsResult ? debtorsResult.data || [] : [];
 
   const plainUser = {
     ...user,
@@ -162,6 +174,7 @@ export default async function HomePage() {
       dashboardData={dashboardData}
       contractMetrics={contractMetrics}
       pessoasData={pessoasData}
+      debtors={debtors}
     />
   );
 }

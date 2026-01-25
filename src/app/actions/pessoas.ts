@@ -20,7 +20,7 @@ export interface PessoaData {
     // Dados da última venda
     lastPackage: string;
     lastAddons: string[];
-    lastContractDate: string;
+    lastContractDate: string | null;
 
     // Campos calculados
     tag: "CLIENTE_ATIVO" | "LEAD";
@@ -59,6 +59,20 @@ export async function getPessoasData(): Promise<PessoaData[]> {
         // Buscar todos os leads para cruzar informações
         const leads = await prisma.lead.findMany();
 
+        // OTIMIZAÇÃO: Criar Maps de leads por telefone e CPF para O(1) lookup
+        // Antes: O(n²) com find() para cada cliente
+        // Agora: O(n) para criar Maps + O(1) para cada lookup
+        const leadsByPhone = new Map<string, typeof leads[0]>();
+        const leadsByCpf = new Map<string, typeof leads[0]>();
+
+        for (const lead of leads) {
+            const phone = lead.phone.replace(/\D/g, "");
+            if (phone) leadsByPhone.set(phone, lead);
+
+            const cpf = lead.cpf?.replace(/\D/g, "");
+            if (cpf) leadsByCpf.set(cpf, lead);
+        }
+
         // Agrupar contratos por telefone/cpf normalizado
         const customerMap = new Map<string, typeof contracts>();
 
@@ -82,12 +96,9 @@ export async function getPessoasData(): Promise<PessoaData[]> {
             const normalizedPhone = lastContract.whatsapp.replace(/\D/g, "");
             const normalizedCpf = lastContract.cpf?.replace(/\D/g, "") || null;
 
-            // Tentar encontrar um Lead correspondente (por telefone ou cpf)
-            const linkedLead = leads.find(l => {
-                const leadPhone = l.phone.replace(/\D/g, "");
-                const leadCpf = l.cpf?.replace(/\D/g, "") || null;
-                return leadPhone === normalizedPhone || (normalizedCpf && leadCpf === normalizedCpf);
-            });
+            // OTIMIZAÇÃO: O(1) lookup em vez de O(n) find()
+            const linkedLead = leadsByPhone.get(normalizedPhone) ||
+                              (normalizedCpf ? leadsByCpf.get(normalizedCpf) : undefined);
 
             // Calcular LTV
             const ltv = customerContracts.reduce(
@@ -166,7 +177,7 @@ export async function getPessoasData(): Promise<PessoaData[]> {
 
                 lastPackage: "",
                 lastAddons: [],
-                lastContractDate: lead.createdAt.toISOString(),
+                lastContractDate: null,
 
                 tag: "LEAD",
                 ltv: 0,
@@ -180,9 +191,11 @@ export async function getPessoasData(): Promise<PessoaData[]> {
             });
         }
 
-        pessoasData.sort((a, b) =>
-            new Date(b.lastContractDate).getTime() - new Date(a.lastContractDate).getTime()
-        );
+        pessoasData.sort((a, b) => {
+            const dateA = a.lastContractDate ? new Date(a.lastContractDate).getTime() : 0;
+            const dateB = b.lastContractDate ? new Date(b.lastContractDate).getTime() : 0;
+            return dateB - dateA;
+        });
 
         return pessoasData;
     } catch (error) {

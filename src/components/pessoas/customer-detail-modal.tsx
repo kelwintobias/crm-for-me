@@ -237,7 +237,7 @@ export function CustomerDetailModal({
                             <div className="bg-muted/50 rounded-lg p-3 text-center">
                                 <Calendar className="h-5 w-5 text-purple-400 mx-auto mb-1" />
                                 <div className="text-lg font-bold">
-                                    {new Date(customer.lastContractDate).toLocaleDateString("pt-BR")}
+                                    {customer.lastContractDate ? new Date(customer.lastContractDate).toLocaleDateString("pt-BR") : "-"}
                                 </div>
                                 <div className="text-xs text-muted-foreground">Última Compra</div>
                             </div>

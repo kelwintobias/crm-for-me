@@ -10,6 +10,8 @@ import { updateLeadStage } from "@/app/actions/leads";
 import { toast } from "sonner";
 import { PlainLead } from "@/types";
 import { Users, Sparkles } from "lucide-react";
+import { LostLeadReasonModal } from "../modals/lost-lead-reason-modal";
+import { useRealtimeLeads } from "@/hooks/use-realtime-leads";
 
 const STAGES: PipelineStage[] = [
   "NOVO_LEAD",
@@ -17,6 +19,7 @@ const STAGES: PipelineStage[] = [
   "AGENDADO",
   "EM_ATENDIMENTO",
   "POS_VENDA",
+  "PERDIDO",
   "FINALIZADO",
 ];
 
@@ -40,6 +43,11 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
   const [leads, setLeads] = useState<PlainLead[]>(initialLeads);
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isLostModalOpen, setIsLostModalOpen] = useState(false);
+  const [pendingLostLead, setPendingLostLead] = useState<{ lead: PlainLead, targetStage: PipelineStage } | null>(null);
+
+  // Realtime subscription
+  useRealtimeLeads(setLeads);
 
   // PERF: Estado de drag em ref - ZERO re-renders durante arraste
   const dragRef = useRef<DragState>({
@@ -76,10 +84,44 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
       AGENDADO: [],
       EM_ATENDIMENTO: [],
       POS_VENDA: [],
+      PERDIDO: [],
       FINALIZADO: [],
     };
+
+    const now = new Date();
+
     leads.forEach((lead) => {
-      if (map[lead.stage]) {
+      // Filtra leads finalizados para mostrar apenas os do mês atual
+      // Baseado na tabela de Contratos (enriched via contractHistory)
+      if (lead.stage === "FINALIZADO") {
+        let shouldShow = false;
+
+        // Se tem histórico de contratos, verifica a data do último contrato
+        if (lead.contractHistory?.lastContractDate) {
+          const contractDate = new Date(lead.contractHistory.lastContractDate);
+          if (
+            contractDate.getMonth() === now.getMonth() &&
+            contractDate.getFullYear() === now.getFullYear()
+          ) {
+            shouldShow = true;
+          }
+        }
+        // Fallback: Se não tem contrato vinculado mas está em FINALIZADO (ex: movido recentemente)
+        // verifica o updatedAt para não sumir da tela imediatamente
+        else {
+          const updateDate = new Date(lead.updatedAt);
+          if (
+            updateDate.getMonth() === now.getMonth() &&
+            updateDate.getFullYear() === now.getFullYear()
+          ) {
+            shouldShow = true;
+          }
+        }
+
+        if (shouldShow) {
+          map[lead.stage].push(lead);
+        }
+      } else if (map[lead.stage]) {
         map[lead.stage].push(lead);
       }
     });
@@ -139,7 +181,14 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     setOverlayPosition({ x: clientX, y: clientY });
   }, []);
 
+  // PERF: Ref para armazenar leads iniciais para rollback (evita dependência no useEffect)
+  const initialLeadsRef = useRef(initialLeads);
+  useEffect(() => {
+    initialLeadsRef.current = initialLeads;
+  }, [initialLeads]);
+
   // PERF: Mouse move - atualiza posição do overlay via DOM direto
+  // OTIMIZAÇÃO: Removido initialLeads das dependências para evitar vazamento de listeners
   useEffect(() => {
     if (!dragActive) return;
 
@@ -198,10 +247,18 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
 
       // Se dropou em uma coluna diferente, atualiza
       if (targetStage && lead && sourceStage && targetStage !== sourceStage) {
+
+        // Se for movido para PERDIDO, abrir modal
+        if (targetStage === "PERDIDO") {
+          setPendingLostLead({ lead, targetStage });
+          setIsLostModalOpen(true);
+          return; // Stop optimistic update
+        }
+
         // Atualização otimista
         setLeads((prev) =>
           prev.map((l) =>
-            l.id === lead.id ? { ...l, stage: targetStage } : l
+            l.id === lead.id ? { ...l, stage: targetStage, updatedAt: new Date() } : l
           )
         );
 
@@ -214,7 +271,8 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
           toast.success("Lead movido com sucesso!");
         } catch {
           toast.error("Erro ao mover lead");
-          setLeads(initialLeads);
+          // Usa ref para rollback (evita dependência)
+          setLeads(initialLeadsRef.current);
         }
       }
     };
@@ -231,7 +289,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
       document.removeEventListener('touchmove', handleMouseMove);
       document.removeEventListener('touchend', handleMouseUp);
     };
-  }, [dragActive, getColumnUnderCursor, initialLeads]);
+  }, [dragActive, getColumnUnderCursor]); // PERF: Removido initialLeads - usa ref
 
   const handleLeadUpdate = useCallback((updatedLead: PlainLead) => {
     setLeads((prev) =>
@@ -245,6 +303,29 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     setLeads((prev) => prev.filter((l) => l.id !== leadId));
     setSelectedLead(null);
   }, []);
+
+  const handleConfirmLost = async (reason: string) => {
+    if (!pendingLostLead) return;
+    const { lead, targetStage } = pendingLostLead;
+
+    // Optimistic
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === lead.id ? { ...l, stage: targetStage, updatedAt: new Date(), lostReason: reason } : l
+      )
+    );
+
+    try {
+      const result = await updateLeadStage(lead.id, targetStage, reason);
+      if (!result.success) throw new Error("Failed");
+      toast.success("Lead marcado como perdido");
+    } catch {
+      toast.error("Erro ao mover lead");
+      // Usa ref para rollback (evita re-renders desnecessários)
+      setLeads(initialLeadsRef.current);
+    }
+    setPendingLostLead(null);
+  };
 
   if (leads.length === 0) {
     return (
@@ -312,21 +393,14 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
         onDelete={handleLeadDelete}
       />
 
-      <div style={{
-        position: 'fixed',
-        bottom: '10px',
-        right: '10px',
-        background: 'black',
-        color: 'lime',
-        padding: '5px 10px',
-        zIndex: 9999,
-        borderRadius: '4px',
-        fontSize: '12px',
-        fontWeight: 'bold',
-        pointerEvents: 'none'
-      }}>
-
-      </div>
+      <LostLeadReasonModal
+        open={isLostModalOpen}
+        onOpenChange={(open) => {
+          setIsLostModalOpen(open);
+          if (!open) setPendingLostLead(null);
+        }}
+        onConfirm={handleConfirmLost}
+      />
     </>
   );
 }

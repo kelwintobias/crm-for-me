@@ -98,6 +98,7 @@ export const STAGE_LABELS: Record<PipelineStage, string> = {
   AGENDADO: "Agendado",
   EM_ATENDIMENTO: "Em Atendimento",
   POS_VENDA: "Pós-Venda",
+  PERDIDO: "Perdido",
   FINALIZADO: "Finalizado",
 };
 
@@ -107,6 +108,7 @@ export const SOURCE_LABELS: Record<LeadSource, string> = {
   PAGINA_PARCEIRA: "Página Parceira",
   INFLUENCER: "Influenciador",
   ANUNCIO: "Anúncio",
+  GOOGLE: "Google",
   OUTRO: "Outro",
 };
 
@@ -118,6 +120,8 @@ export const PLAN_LABELS: Record<PlanType, string> = {
   PRO_PLUS: "Pro Plus",
   ULTRA_PRO: "Ultra Pro",
   EVOLUTION: "Evolution",
+  PLANO_UNICO: "Plano Único",
+  PLANO_MENSAL: "Plano Mensal",
 };
 
 // Cores das badges por origem
@@ -130,6 +134,7 @@ export const SOURCE_BADGE_VARIANTS: Record<
   PAGINA_PARCEIRA: "parceira",
   INFLUENCER: "influencer",
   ANUNCIO: "anuncio",
+  GOOGLE: "secondary",
   OUTRO: "secondary",
 };
 
@@ -140,6 +145,7 @@ export const STAGE_COLORS: Record<PipelineStage, string> = {
   AGENDADO: "bg-purple-500",
   EM_ATENDIMENTO: "bg-emerald-500",
   POS_VENDA: "bg-cyan-500",
+  PERDIDO: "bg-red-500",
   FINALIZADO: "bg-green-500",
 };
 

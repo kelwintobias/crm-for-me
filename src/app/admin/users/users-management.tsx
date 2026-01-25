@@ -62,6 +62,8 @@ const AVAILABLE_TABS = [
     { id: "contratos", label: "Contratos", description: "Gestão de contratos" },
     { id: "pessoas", label: "Pessoas", description: "Base de clientes" },
     { id: "custos", label: "Custos", description: "Custos fixos" },
+    { id: "devedores", label: "Devedores", description: "Gestão de devedores" },
+    { id: "logs", label: "Logs", description: "Logs de webhooks" },
 ];
 
 // ===========================================

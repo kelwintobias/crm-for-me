@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Calendar, XCircle, UserX } from "lucide-react";
+import { CheckCircle, Calendar, XCircle, UserX, Users } from "lucide-react";
 
 interface DailyStatsCardsProps {
   data: {
@@ -8,14 +8,15 @@ interface DailyStatsCardsProps {
     scheduledToday: number;
     canceledToday: number;
     noShowToday: number;
+    leadsAtendidosHoje?: number; // Leads com updatedAt hoje
   };
 }
 
 const stats = [
   {
-    key: "completedToday" as const,
-    label: "Atendidos Hoje",
-    icon: CheckCircle,
+    key: "leadsAtendidosHoje" as const,
+    label: "Leads Atendidos Hoje",
+    icon: Users,
     color: "text-emerald-400",
     bgColor: "bg-emerald-500/10",
     borderColor: "border-emerald-500/20",
@@ -51,7 +52,7 @@ export function DailyStatsCards({ data }: DailyStatsCardsProps) {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {stats.map((stat) => {
         const Icon = stat.icon;
-        const value = data[stat.key];
+        const value = data[stat.key as keyof typeof data] ?? 0;
 
         return (
           <div

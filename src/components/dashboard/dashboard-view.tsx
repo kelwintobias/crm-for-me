@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Header } from "../layout/header";
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KPICards } from "./kpi-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 import { PlainContract } from "@/components/contracts/contracts-table";
 import type { PlainFixedCost } from "@/app/actions/fixed-costs";
@@ -78,70 +78,20 @@ const AppointmentDetailModal = dynamic(() => import("../modals/appointment-detai
   ssr: false,
 });
 
-// Charts com lazy loading
-const RevenueChart = dynamic(() => import("./revenue-chart").then(mod => ({ default: mod.RevenueChart })), {
-  loading: () => <ChartSkeleton className="col-span-4" />,
-});
-
-const SalesDistributionChart = dynamic(() => import("./sales-distribution-chart").then(mod => ({ default: mod.SalesDistributionChart })), {
-  loading: () => <ChartSkeleton className="col-span-3" />,
-});
-
-const SourceDistributionChart = dynamic(() => import("./source-distribution-chart").then(mod => ({ default: mod.SourceDistributionChart })), {
-  loading: () => <ChartSkeleton />,
-});
-
-const ConversionFunnel = dynamic(() => import("./conversion-funnel").then(mod => ({ default: mod.ConversionFunnel })), {
-  loading: () => <ChartSkeleton className="col-span-3" />,
-});
-
-const InsightsCard = dynamic(() => import("./insights-card").then(mod => ({ default: mod.InsightsCard })), {
-  loading: () => <ChartSkeleton className="col-span-4" />,
-});
-
-const DailyStatsCards = dynamic(() => import("./daily-stats-cards").then(mod => ({ default: mod.DailyStatsCards })), {
-  loading: () => <Skeleton className="h-24 w-full" />,
-});
-
-const AppointmentsChart = dynamic(() => import("./appointments-chart").then(mod => ({ default: mod.AppointmentsChart })), {
-  loading: () => <ChartSkeleton />,
-});
-
-const WeeklyPerformanceChart = dynamic(() => import("./weekly-performance-chart").then(mod => ({ default: mod.WeeklyPerformanceChart })), {
-  loading: () => <ChartSkeleton />,
-});
-
-// Novos gráficos baseados em contratos
-const ContractRevenueChart = dynamic(() => import("./contract-revenue-chart").then(mod => ({ default: mod.ContractRevenueChart })), {
-  loading: () => <ChartSkeleton className="col-span-4" />,
-});
-
-const PackageDistributionChart = dynamic(() => import("./package-distribution-chart").then(mod => ({ default: mod.PackageDistributionChart })), {
-  loading: () => <ChartSkeleton className="col-span-3" />,
-});
-
-const AddonsAnalysisCard = dynamic(() => import("./addons-analysis-card").then(mod => ({ default: mod.AddonsAnalysisCard })), {
-  loading: () => <ChartSkeleton className="col-span-4" />,
-});
-
-const ContractKPICards = dynamic(() => import("./contract-kpi-cards").then(mod => ({ default: mod.ContractKPICards })), {
-  loading: () => <Skeleton className="h-40 w-full" />,
-});
-
-const ContractSourceChart = dynamic(() => import("./contract-source-chart").then(mod => ({ default: mod.ContractSourceChart })), {
-  loading: () => <ChartSkeleton className="col-span-3" />,
-});
-
-const FinancialInsightsCard = dynamic(() => import("./financial-insights-card").then(mod => ({ default: mod.FinancialInsightsCard })), {
-  loading: () => <ChartSkeleton className="col-span-4" />,
-});
+// Tab Components
+import { OverviewTab } from "./overview-tab";
+import { FinancialTab } from "./financial-tab";
+import { SellerDashboard } from "./seller-dashboard";
+import { AdminOverview } from "./admin-overview";
 
 const ContractsCountChart = dynamic(() => import("./contracts-count-chart").then(mod => ({ default: mod.ContractsCountChart })), {
   loading: () => <ChartSkeleton className="col-span-4" />,
+  ssr: false, // PERF: Evita renderização no servidor
 });
 
 const ContractsTable = dynamic(() => import("../contracts/contracts-table").then(mod => ({ default: mod.ContractsTable })), {
   loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
+  ssr: false, // PERF: Evita renderização no servidor
 });
 
 const NewContractModal = dynamic(() => import("../modals/new-contract-modal").then(mod => ({ default: mod.NewContractModal })), {
@@ -158,6 +108,18 @@ const FixedCostsTable = dynamic(() => import("../fixed-costs/fixed-costs-table")
 
 const NewFixedCostModal = dynamic(() => import("../modals/new-fixed-cost-modal").then(mod => ({ default: mod.NewFixedCostModal })), {
   ssr: false,
+});
+
+const DebtorsTable = dynamic(() => import("../debtors/debtors-table").then(mod => ({ default: mod.DebtorsTable })), {
+  loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
+});
+
+const NewDebtorModal = dynamic(() => import("../modals/new-debtor-modal").then(mod => ({ default: mod.NewDebtorModal })), {
+  ssr: false,
+});
+
+const WebhookLogsView = dynamic(() => import("../webhook-logs/webhook-logs-view").then(mod => ({ default: mod.WebhookLogsView })), {
+  loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
 });
 
 interface ContractMetricsData {
@@ -244,21 +206,94 @@ interface DashboardViewProps {
   };
   contractMetrics: ContractMetricsData;
   pessoasData: import("@/app/actions/pessoas").PessoaData[];
+  debtors: any[];
 }
 
-export function DashboardView({ user, leads, contracts, fixedCosts, appointments, dashboardData: _dashboardData, contractMetrics, pessoasData }: DashboardViewProps) {
+// PERF: Reducer para consolidar estados de modais (reduz re-renders de 8+ para 1)
+type ModalState = {
+  newLead: boolean;
+  search: boolean;
+  schedule: boolean;
+  newContract: boolean;
+  newFixedCost: boolean;
+  newDebtor: boolean;
+  customerDetail: boolean;
+  selectedLead: PlainLead | null;
+  selectedAppointmentId: string | null;
+  selectedCustomer: import("@/app/actions/pessoas").PessoaData | null;
+};
+
+type ModalAction =
+  | { type: 'OPEN_MODAL'; modal: keyof Omit<ModalState, 'selectedLead' | 'selectedAppointmentId' | 'selectedCustomer'> }
+  | { type: 'CLOSE_MODAL'; modal: keyof Omit<ModalState, 'selectedLead' | 'selectedAppointmentId' | 'selectedCustomer'> }
+  | { type: 'SET_SELECTED_LEAD'; lead: PlainLead | null }
+  | { type: 'SET_SELECTED_APPOINTMENT'; id: string | null }
+  | { type: 'SET_SELECTED_CUSTOMER'; customer: import("@/app/actions/pessoas").PessoaData | null }
+  | { type: 'CLOSE_ALL' };
+
+const modalInitialState: ModalState = {
+  newLead: false,
+  search: false,
+  schedule: false,
+  newContract: false,
+  newFixedCost: false,
+  newDebtor: false,
+  customerDetail: false,
+  selectedLead: null,
+  selectedAppointmentId: null,
+  selectedCustomer: null,
+};
+
+function modalReducer(state: ModalState, action: ModalAction): ModalState {
+  switch (action.type) {
+    case 'OPEN_MODAL':
+      return { ...state, [action.modal]: true };
+    case 'CLOSE_MODAL':
+      return { ...state, [action.modal]: false };
+    case 'SET_SELECTED_LEAD':
+      return { ...state, selectedLead: action.lead };
+    case 'SET_SELECTED_APPOINTMENT':
+      return { ...state, selectedAppointmentId: action.id };
+    case 'SET_SELECTED_CUSTOMER':
+      return { ...state, selectedCustomer: action.customer, customerDetail: action.customer !== null };
+    case 'CLOSE_ALL':
+      return modalInitialState;
+    default:
+      return state;
+  }
+}
+
+export function DashboardView({ user, leads, contracts, fixedCosts, appointments, dashboardData: _dashboardData, contractMetrics, pessoasData, debtors }: DashboardViewProps) {
   const router = useRouter();
-  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
-  const [isNewContractModalOpen, setIsNewContractModalOpen] = useState(false);
-  const [isNewFixedCostModalOpen, setIsNewFixedCostModalOpen] = useState(false);
+
+  // PERF: Estado consolidado de modais usando reducer
+  const [modals, dispatch] = useReducer(modalReducer, modalInitialState);
+
+  // Aliases para compatibilidade (evita refatorar todo o componente)
+  const isNewLeadModalOpen = modals.newLead;
+  const setIsNewLeadModalOpen = useCallback((open: boolean) => dispatch({ type: open ? 'OPEN_MODAL' : 'CLOSE_MODAL', modal: 'newLead' }), []);
+  const isSearchOpen = modals.search;
+  const setIsSearchOpen = useCallback((open: boolean) => dispatch({ type: open ? 'OPEN_MODAL' : 'CLOSE_MODAL', modal: 'search' }), []);
+  const isScheduleModalOpen = modals.schedule;
+  const setIsScheduleModalOpen = useCallback((open: boolean) => dispatch({ type: open ? 'OPEN_MODAL' : 'CLOSE_MODAL', modal: 'schedule' }), []);
+  const selectedLead = modals.selectedLead;
+  const setSelectedLead = useCallback((lead: PlainLead | null) => dispatch({ type: 'SET_SELECTED_LEAD', lead }), []);
+  const selectedAppointmentId = modals.selectedAppointmentId;
+  const setSelectedAppointmentId = useCallback((id: string | null) => dispatch({ type: 'SET_SELECTED_APPOINTMENT', id }), []);
+  const isNewContractModalOpen = modals.newContract;
+  const setIsNewContractModalOpen = useCallback((open: boolean) => dispatch({ type: open ? 'OPEN_MODAL' : 'CLOSE_MODAL', modal: 'newContract' }), []);
+  const isNewFixedCostModalOpen = modals.newFixedCost;
+  const setIsNewFixedCostModalOpen = useCallback((open: boolean) => dispatch({ type: open ? 'OPEN_MODAL' : 'CLOSE_MODAL', modal: 'newFixedCost' }), []);
+  const isNewDebtorModalOpen = modals.newDebtor;
+  const setIsNewDebtorModalOpen = useCallback((open: boolean) => dispatch({ type: open ? 'OPEN_MODAL' : 'CLOSE_MODAL', modal: 'newDebtor' }), []);
 
   // Estado para modal de detalhe de cliente
-  const [selectedCustomer, setSelectedCustomer] = useState<import("@/app/actions/pessoas").PessoaData | null>(null);
-  const [isCustomerDetailOpen, setIsCustomerDetailOpen] = useState(false);
+  const selectedCustomer = modals.selectedCustomer;
+  const isCustomerDetailOpen = modals.customerDetail;
+  const setSelectedCustomer = useCallback((customer: import("@/app/actions/pessoas").PessoaData | null) => dispatch({ type: 'SET_SELECTED_CUSTOMER', customer }), []);
+  const setIsCustomerDetailOpen = useCallback((open: boolean) => {
+    if (!open) dispatch({ type: 'SET_SELECTED_CUSTOMER', customer: null });
+  }, []);
 
   // PERF FIX: Estado controlado da aba para desmontagem seletiva de componentes
   const [activeTab, setActiveTab] = useState<string>("kanban");
@@ -275,6 +310,8 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   const shouldRenderFixedCosts = useMemo(() => activeTab === "fixed-costs", [activeTab]);
   const shouldRenderDashboards = useMemo(() => activeTab === "dashboards", [activeTab]);
   const shouldRenderPeople = useMemo(() => activeTab === "people", [activeTab]);
+  const shouldRenderDebtors = useMemo(() => activeTab === "debtors", [activeTab]);
+  const shouldRenderLogs = useMemo(() => activeTab === "logs", [activeTab]);
 
   // ===========================================
   // TAB VISIBILITY CONTROL
@@ -288,6 +325,8 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     "people": "pessoas",
     "contracts": "contratos",
     "fixed-costs": "custos",
+    "debtors": "devedores",
+    "logs": "logs",
   };
 
   // Helper to check if user can view a specific tab
@@ -336,7 +375,9 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
           comparison = a.ltv - b.ltv;
           break;
         case "lastContractDate":
-          comparison = new Date(a.lastContractDate).getTime() - new Date(b.lastContractDate).getTime();
+          const dateA = a.lastContractDate ? new Date(a.lastContractDate).getTime() : 0;
+          const dateB = b.lastContractDate ? new Date(b.lastContractDate).getTime() : 0;
+          comparison = dateA - dateB;
           break;
       }
       return pessoasSortDirection === "asc" ? comparison : -comparison;
@@ -364,423 +405,6 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
     return selectedMonths.includes(monthKey);
   }, []);
-
-  // Dados filtrados para Visao Geral (baseados em leads)
-  const filteredLeadsData = useMemo(() => {
-    if (selectedMonthsOverview.length === 0) return leads;
-    return leads.filter(lead => isDateInSelectedMonths(lead.createdAt, selectedMonthsOverview));
-  }, [leads, selectedMonthsOverview, isDateInSelectedMonths]);
-
-  // Dados filtrados de contratos para Visao Geral (dados financeiros vem de Contratos)
-  const filteredContractsOverview = useMemo(() => {
-    if (selectedMonthsOverview.length === 0) return contracts;
-    return contracts.filter(contract => isDateInSelectedMonths(contract.contractDate, selectedMonthsOverview));
-  }, [contracts, selectedMonthsOverview, isDateInSelectedMonths]);
-
-  // Dados filtrados de appointments para Visao Geral
-  const filteredAppointmentsData = useMemo(() => {
-    if (selectedMonthsOverview.length === 0) return appointments;
-    return appointments.filter(apt => isDateInSelectedMonths(apt.scheduledAt, selectedMonthsOverview));
-  }, [appointments, selectedMonthsOverview, isDateInSelectedMonths]);
-
-  // Recalcula metricas do dashboard baseado nos CONTRATOS, leads e appointments filtrados
-  const filteredDashboardData = useMemo(() => {
-    // Usa contratos para dados financeiros, leads para pipeline/funil
-    const filteredContracts = filteredContractsOverview;
-    const filteredLeads = filteredLeadsData;
-    const filteredApts = filteredAppointmentsData;
-
-    // Labels para pacotes de contratos
-    const PACKAGE_LABELS: Record<string, string> = {
-      INTERMEDIARIO: "Intermediario",
-      AVANCADO: "Avancado",
-      ELITE: "Elite",
-      PRO_PLUS: "Pro Plus",
-      ULTRA_PRO: "Ultra Pro",
-      EVOLUTION: "Evolution",
-    };
-
-    // Labels para origem de contratos
-    const CONTRACT_SOURCE_LABELS: Record<string, string> = {
-      ANUNCIO: "Anuncio",
-      INDICACAO: "Indicacao",
-      INFLUENCIADOR: "Influenciador",
-      PARCEIRO: "Parceiro",
-    };
-
-    // Labels para origem de leads
-    const LEAD_SOURCE_LABELS: Record<string, string> = {
-      INSTAGRAM: "Instagram",
-      INDICACAO: "Indicacao",
-      PAGINA_PARCEIRA: "Pagina Parceira",
-      INFLUENCER: "Influenciador",
-      ANUNCIO: "Anuncio",
-      OUTRO: "Outro",
-    };
-
-    const STAGE_LABELS: Record<string, string> = {
-      NOVO_LEAD: "Novo Lead",
-      EM_NEGOCIACAO: "Em Negociacao",
-      AGENDADO: "Agendado",
-      EM_ATENDIMENTO: "Em Atendimento",
-      POS_VENDA: "Pos-Venda",
-      FINALIZADO: "Finalizado",
-    };
-
-    // ============================================
-    // KPIs FINANCEIROS (baseados em CONTRATOS)
-    // ============================================
-    const totalRevenue = filteredContracts.reduce((sum, c) => sum + c.totalValue, 0);
-    const totalContractsCount = filteredContracts.length;
-    const averageTicket = totalContractsCount > 0 ? totalRevenue / totalContractsCount : 0;
-
-    // MRR = receita total dos contratos (pode ser ajustado conforme regra de negócio)
-    const mrr = totalRevenue;
-
-    // Pipeline = valor potencial dos leads em negociação
-    // Usa o ticket médio dos contratos como estimativa de valor por lead
-    const emPipeline = filteredLeads.filter(l => ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO"].includes(l.stage));
-    const pipelineLeadsCount = emPipeline.length;
-    // Se há contratos, usa o ticket médio como estimativa; senão, usa um valor padrão
-    const estimatedTicket = averageTicket > 0 ? averageTicket : 75; // Valor padrão R$75 se não há contratos
-    const pipeline = pipelineLeadsCount * estimatedTicket;
-
-    // ============================================
-    // DISTRIBUICAO DE VENDAS (baseada em CONTRATOS)
-    // ============================================
-    const packageMap = new Map<string, { count: number; revenue: number }>();
-    filteredContracts.forEach(c => {
-      const current = packageMap.get(c.package) || { count: 0, revenue: 0 };
-      current.count++;
-      current.revenue += c.totalValue;
-      packageMap.set(c.package, current);
-    });
-
-    const distribution = Array.from(packageMap.entries()).map(([pkg, stats]) => ({
-      name: PACKAGE_LABELS[pkg] || pkg,
-      value: stats.count,
-      revenue: stats.revenue,
-    })).sort((a, b) => b.revenue - a.revenue);
-
-    // ============================================
-    // EVOLUCAO DE RECEITA (baseada em CONTRATOS)
-    // ============================================
-    const monthlyMap = new Map<string, { unico: number; mensal: number; total: number }>();
-    const basicPlans = ["INTERMEDIARIO", "AVANCADO"];
-    const premiumPlans = ["ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"];
-
-    filteredContracts.forEach(c => {
-      const date = new Date(c.contractDate);
-      const monthKey = format(date, "MMM", { locale: ptBR }).toUpperCase();
-      const current = monthlyMap.get(monthKey) || { unico: 0, mensal: 0, total: 0 };
-
-      if (basicPlans.includes(c.package)) {
-        current.unico += c.totalValue;
-      } else if (premiumPlans.includes(c.package)) {
-        current.mensal += c.totalValue;
-      }
-      current.total += c.totalValue;
-      monthlyMap.set(monthKey, current);
-    });
-
-    const revenueEvolution = Array.from(monthlyMap.entries()).map(([name, data]) => ({
-      name,
-      ...data,
-    }));
-
-    // ============================================
-    // LEADS POR ORIGEM (baseado em CONTRATOS - origem das vendas)
-    // ============================================
-    const sourceMap = new Map<string, number>();
-    filteredContracts.forEach(c => {
-      sourceMap.set(c.source, (sourceMap.get(c.source) || 0) + 1);
-    });
-
-    const sourceDistribution = Array.from(sourceMap.entries()).map(([source, count]) => ({
-      name: CONTRACT_SOURCE_LABELS[source] || LEAD_SOURCE_LABELS[source] || source,
-      value: count,
-      source,
-    })).sort((a, b) => b.value - a.value);
-
-    // ============================================
-    // FUNIL DE CONVERSAO (baseado em LEADS)
-    // ============================================
-    const stageOrder = ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"];
-    const stageMap = new Map<string, number>();
-    filteredLeads.forEach(l => {
-      stageMap.set(l.stage, (stageMap.get(l.stage) || 0) + 1);
-    });
-
-    const funnel = stageOrder.map(stage => ({
-      stage,
-      name: STAGE_LABELS[stage] || stage,
-      value: stageMap.get(stage) || 0,
-    }));
-
-    // Metricas gerais de leads
-    const totalLeads = filteredLeads.length;
-    const vendidosLeads = filteredLeads.filter(l => l.stage === "POS_VENDA" || l.stage === "FINALIZADO").length;
-    const taxaConversao = totalLeads > 0 ? Math.round((vendidosLeads / totalLeads) * 100) : 0;
-    const leadsEmContato = filteredLeads.filter(l => l.stage === "EM_NEGOCIACAO").length;
-
-    // ============================================
-    // METRICAS DE AGENDAMENTOS (filtradas)
-    // ============================================
-    const STATUS_LABELS: Record<string, string> = {
-      SCHEDULED: "Agendado",
-      COMPLETED: "Concluido",
-      CANCELED: "Cancelado",
-      NO_SHOW: "No-Show",
-    };
-    const STATUS_COLORS: Record<string, string> = {
-      SCHEDULED: "#3B82F6",
-      COMPLETED: "#10B981",
-      CANCELED: "#EF4444",
-      NO_SHOW: "#F59E0B",
-    };
-
-    // Distribuicao por status de agendamento
-    const aptStatusMap = new Map<string, number>();
-    filteredApts.forEach(apt => {
-      aptStatusMap.set(apt.status, (aptStatusMap.get(apt.status) || 0) + 1);
-    });
-
-    const appointmentsByStatus = Array.from(aptStatusMap.entries()).map(([status, count]) => ({
-      name: STATUS_LABELS[status] || status,
-      value: count,
-      status,
-      color: STATUS_COLORS[status] || "#6B7280",
-    }));
-
-    // Performance semanal (atendimentos por dia da semana)
-    const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
-    const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0];
-
-    filteredApts
-      .filter(apt => apt.status === "COMPLETED")
-      .forEach(apt => {
-        const date = new Date(apt.scheduledAt);
-        const dayIndex = date.getDay();
-        dayOfWeekCounts[dayIndex]++;
-      });
-
-    const weeklyPerformance = DAY_LABELS.map((day, index) => ({
-      day,
-      atendimentos: dayOfWeekCounts[index],
-    }));
-
-    // Taxas de agendamentos
-    const totalApts = filteredApts.length;
-    const completedApts = filteredApts.filter(a => a.status === "COMPLETED").length;
-    const canceledApts = filteredApts.filter(a => a.status === "CANCELED").length;
-    const noShowApts = filteredApts.filter(a => a.status === "NO_SHOW").length;
-
-    const taxaConclusao = totalApts > 0 ? Math.round((completedApts / totalApts) * 100) : 0;
-    const taxaCancelamento = totalApts > 0 ? Math.round((canceledApts / totalApts) * 100) : 0;
-    const taxaNoShow = totalApts > 0 ? Math.round((noShowApts / totalApts) * 100) : 0;
-
-    // Daily stats
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-
-    const aptsToday = filteredApts.filter(apt => {
-      const aptDate = apt.scheduledAt.split("T")[0];
-      return aptDate === todayStr;
-    });
-
-    const completedToday = aptsToday.filter(a => a.status === "COMPLETED").length;
-    const scheduledToday = aptsToday.filter(a => a.status === "SCHEDULED").length;
-    const canceledToday = aptsToday.filter(a => a.status === "CANCELED").length;
-    const noShowToday = aptsToday.filter(a => a.status === "NO_SHOW").length;
-
-    return {
-      kpis: {
-        totalRevenue,
-        totalRevenuePrev: 0,
-        mrr,
-        mrrPrev: 0,
-        pipeline,
-        pipelinePrev: 0,
-        averageTicket,
-        averageTicketPrev: 0,
-      },
-      charts: {
-        distribution,
-        revenueEvolution,
-        sourceDistribution,
-        funnel,
-        appointmentsByStatus,
-        weeklyPerformance,
-      },
-      metrics: {
-        totalLeads,
-        vendidos: totalContractsCount, // Vendidos = total de contratos
-        taxaConversao,
-        leadsEmContato,
-        leadsPerdidos: 0,
-        leadsAguardando: filteredLeads.filter(l => l.stage === "EM_NEGOCIACAO").length,
-        taxaConclusao,
-        taxaCancelamento,
-        taxaNoShow,
-      },
-      dailyStats: {
-        completedToday,
-        scheduledToday,
-        canceledToday,
-        noShowToday,
-      },
-    };
-  }, [filteredContractsOverview, filteredLeadsData, filteredAppointmentsData]);
-
-  // Dados filtrados para Dashboards (baseados em contratos)
-  const filteredContractsData = useMemo(() => {
-    if (selectedMonthsDashboards.length === 0) return contracts;
-    return contracts.filter(contract => isDateInSelectedMonths(contract.contractDate, selectedMonthsDashboards));
-  }, [contracts, selectedMonthsDashboards, isDateInSelectedMonths]);
-
-  // Recalcula metricas de contratos baseado no filtro
-  const filteredContractMetrics = useMemo(() => {
-    if (selectedMonthsDashboards.length === 0) return contractMetrics;
-
-    const filtered = filteredContractsData;
-    const totalRevenue = filtered.reduce((sum, c) => sum + c.totalValue, 0);
-    const totalContracts = filtered.length;
-    const avgTicket = totalContracts > 0 ? totalRevenue / totalContracts : 0;
-
-    // Distribuicao por pacote
-    const packageMap = new Map<string, { count: number; revenue: number }>();
-    filtered.forEach(c => {
-      const pkg = c.package;
-      const current = packageMap.get(pkg) || { count: 0, revenue: 0 };
-      current.count++;
-      current.revenue += c.totalValue;
-      packageMap.set(pkg, current);
-    });
-
-    const PACKAGE_LABELS: Record<string, string> = {
-      INTERMEDIARIO: "Intermediario",
-      AVANCADO: "Avancado",
-      ELITE: "Elite",
-      PRO_PLUS: "Pro Plus",
-      ULTRA_PRO: "Ultra Pro",
-      EVOLUTION: "Evolution",
-    };
-
-    const packageDistribution = Array.from(packageMap.entries()).map(([pkg, stats]) => ({
-      name: PACKAGE_LABELS[pkg] || pkg,
-      value: stats.count,
-      revenue: stats.revenue,
-      package: pkg,
-    })).sort((a, b) => b.revenue - a.revenue);
-
-    // Distribuicao por origem
-    const sourceMap = new Map<string, { count: number; revenue: number }>();
-    filtered.forEach(c => {
-      const src = c.source;
-      const current = sourceMap.get(src) || { count: 0, revenue: 0 };
-      current.count++;
-      current.revenue += c.totalValue;
-      sourceMap.set(src, current);
-    });
-
-    const SOURCE_LABELS: Record<string, string> = {
-      ANUNCIO: "Anuncio",
-      INDICACAO: "Indicacao",
-      INFLUENCIADOR: "Influenciador",
-      PARCEIRO: "Parceiro",
-    };
-
-    const sourceDistribution = Array.from(sourceMap.entries()).map(([src, stats]) => ({
-      name: SOURCE_LABELS[src] || src,
-      value: stats.count,
-      revenue: stats.revenue,
-      source: src,
-    })).sort((a, b) => b.value - a.value);
-
-    // Evolucao por mes
-    const monthlyMap = new Map<string, { receita: number; contratos: number }>();
-    filtered.forEach(c => {
-      const date = new Date(c.contractDate);
-      const monthKey = format(date, "MMM/yy", { locale: ptBR });
-      const current = monthlyMap.get(monthKey) || { receita: 0, contratos: 0 };
-      current.receita += c.totalValue;
-      current.contratos++;
-      monthlyMap.set(monthKey, current);
-    });
-
-    const revenueEvolution = Array.from(monthlyMap.entries())
-      .map(([month, data]) => ({ month, ...data }))
-      .sort((a, b) => {
-        const dateA = new Date(a.month.replace("/", " 20"));
-        const dateB = new Date(b.month.replace("/", " 20"));
-        return dateA.getTime() - dateB.getTime();
-      });
-
-    // Analise de adicionais
-    const addonMap = new Map<string, number>();
-    let contractsWithAddons = 0;
-    filtered.forEach(c => {
-      if (c.addons && c.addons.length > 0) {
-        contractsWithAddons++;
-        c.addons.forEach(addon => {
-          addonMap.set(addon, (addonMap.get(addon) || 0) + 1);
-        });
-      }
-    });
-
-    const ADDON_LABELS: Record<string, string> = {
-      ADICIONAL_FOTOS: "Fotos Extras",
-      VIDEO_DRONE: "Video Drone",
-      ALBUM_DIGITAL: "Album Digital",
-      EDICAO_PREMIUM: "Edicao Premium",
-    };
-
-    const addonDistribution = Array.from(addonMap.entries())
-      .map(([addon, count]) => ({
-        name: ADDON_LABELS[addon] || addon,
-        value: count,
-        addon,
-      }))
-      .sort((a, b) => b.value - a.value);
-
-    const addonPercentage = totalContracts > 0
-      ? Math.round((contractsWithAddons / totalContracts) * 100)
-      : 0;
-
-    return {
-      kpis: {
-        ...contractMetrics.kpis,
-        totalRevenue,
-        totalContracts,
-        avgTicket,
-        monthlyRevenue: totalRevenue,
-        monthlyContracts: totalContracts,
-      },
-      charts: {
-        revenueEvolution,
-        packageDistribution,
-        sourceDistribution,
-        addonDistribution,
-      },
-      analysis: {
-        addonPercentage,
-        contractsWithAddons,
-        packageRanking: packageDistribution.map(p => ({
-          package: p.package,
-          name: p.name,
-          count: p.value,
-          revenue: p.revenue,
-          avgTicket: p.value > 0 ? p.revenue / p.value : 0,
-        })),
-        bestSource: sourceDistribution[0] || null,
-        bestPackage: packageDistribution[0] ? {
-          name: packageDistribution[0].name,
-          count: packageDistribution[0].value,
-          revenue: packageDistribution[0].revenue,
-        } : null,
-      },
-    };
-  }, [contractMetrics, filteredContractsData, selectedMonthsDashboards]);
 
   const handleSelectLead = useCallback((lead: PlainLead) => {
     setSelectedLead(lead);
@@ -872,8 +496,11 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
               {activeTab === 'overview' && 'Visão Geral'}
               {activeTab === 'dashboards' && 'Dashboards'}
               {activeTab === 'people' && 'Pessoas'}
+              {activeTab === 'people' && 'Pessoas'}
               {activeTab === 'contracts' && 'Contratos'}
               {activeTab === 'fixed-costs' && 'Custos Fixos'}
+              {activeTab === 'debtors' && 'Devedores'}
+              {activeTab === 'logs' && 'Webhook Logs'}
             </h2>
             <p className="text-muted-foreground">
               {activeTab === 'people' ? 'Gerencie sua base de clientes e leads' : 'Gerencie seu pipeline e atividades'}
@@ -939,6 +566,18 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                     Contratos
                   </DropdownMenuItem>
                 )}
+                {canViewTab("debtors") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("debtors")} className="cursor-pointer gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Devedores
+                  </DropdownMenuItem>
+                )}
+                {canViewTab("logs") && (
+                  <DropdownMenuItem onClick={() => setActiveTab("logs")} className="cursor-pointer gap-2">
+                    <ScrollText className="h-4 w-4" />
+                    Logs
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -947,112 +586,31 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
           <TabsContent value="overview" className="space-y-4">
             {shouldRenderCharts && (
               <>
-                {/* Filtro de Meses */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Filtrar por periodo:</span>
-                    <MonthSelector
-                      selectedMonths={selectedMonthsOverview}
-                      onSelectionChange={setSelectedMonthsOverview}
-                    />
-                  </div>
-                  {selectedMonthsOverview.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {filteredLeadsData.length} lead(s) no periodo selecionado
-                    </span>
-                  )}
-                </div>
-
-                {/* KPI Cards */}
-                <KPICards metrics={filteredDashboardData.kpis} />
-
-                {/* Metricas do Dia */}
-                <DailyStatsCards data={filteredDashboardData.dailyStats} />
-
-                {/* Charts Grid */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                  <RevenueChart data={filteredDashboardData.charts.revenueEvolution} />
-                  <SalesDistributionChart data={filteredDashboardData.charts.distribution} />
-                </div>
-
-                {/* Performance de Agendamentos */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <AppointmentsChart data={filteredDashboardData.charts.appointmentsByStatus} />
-                  <WeeklyPerformanceChart data={filteredDashboardData.charts.weeklyPerformance} />
-                </div>
-
-                {/* Funil e Insights */}
-                <div className="grid gap-4 lg:grid-cols-7">
-                  <ConversionFunnel
-                    data={filteredDashboardData.charts.funnel}
-                    taxaConversao={filteredDashboardData.metrics.taxaConversao}
-                  />
-                  <InsightsCard
-                    kpis={filteredDashboardData.kpis}
-                    metrics={filteredDashboardData.metrics}
-                    sourceDistribution={filteredDashboardData.charts.sourceDistribution}
-                  />
-                </div>
-
-                {/* Leads por Origem */}
-                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-                  <SourceDistributionChart data={filteredDashboardData.charts.sourceDistribution} />
-                </div>
+                {user.role === "VENDEDOR" ? (
+                  <SellerDashboard userId={user.id} />
+                ) : (
+                  <AdminOverview />
+                )}
+                <OverviewTab
+                  user={user}
+                  leads={leads}
+                  appointments={appointments}
+                  contracts={contracts}
+                  selectedMonths={selectedMonthsOverview}
+                  onSelectionChange={setSelectedMonthsOverview}
+                />
               </>
             )}
           </TabsContent>
 
           <TabsContent value="dashboards" className="space-y-4">
             {shouldRenderDashboards && (
-              <>
-                {/* Filtro de Meses */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Filtrar por periodo:</span>
-                    <MonthSelector
-                      selectedMonths={selectedMonthsDashboards}
-                      onSelectionChange={setSelectedMonthsDashboards}
-                    />
-                  </div>
-                  {selectedMonthsDashboards.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {filteredContractsData.length} contrato(s) no periodo selecionado
-                    </span>
-                  )}
-                </div>
-
-                {/* KPIs de Contratos */}
-                <ContractKPICards metrics={filteredContractMetrics.kpis} />
-
-                {/* Gráficos principais */}
-                <div className="grid gap-4 lg:grid-cols-7">
-                  <ContractRevenueChart
-                    data={filteredContractMetrics.charts.revenueEvolution}
-                    growth={filteredContractMetrics.kpis.revenueGrowth}
-                  />
-                  <PackageDistributionChart data={filteredContractMetrics.charts.packageDistribution} />
-                </div>
-
-                {/* Análise de Adicionais e Origem */}
-                <div className="grid gap-4 lg:grid-cols-7">
-                  <AddonsAnalysisCard
-                    data={filteredContractMetrics.charts.addonDistribution}
-                    addonPercentage={filteredContractMetrics.analysis.addonPercentage}
-                    contractsWithAddons={filteredContractMetrics.analysis.contractsWithAddons}
-                    totalContracts={filteredContractMetrics.kpis.totalContracts}
-                  />
-                  <ContractSourceChart data={filteredContractMetrics.charts.sourceDistribution} />
-                </div>
-
-                {/* Gráfico de Contratos Realizados */}
-                <div className="grid gap-4 lg:grid-cols-7">
-                  <ContractsCountChart data={filteredContractMetrics.charts.revenueEvolution} />
-                  <FinancialInsightsCard
-                    kpis={filteredContractMetrics.kpis}
-                    analysis={filteredContractMetrics.analysis}
-                  />
-                </div>
-              </>
+              <FinancialTab
+                contracts={contracts}
+                contractMetrics={contractMetrics}
+                selectedMonths={selectedMonthsDashboards}
+                onSelectionChange={setSelectedMonthsDashboards}
+              />
             )}
           </TabsContent>
 
@@ -1118,7 +676,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                             </div>
                             <div>
                               <span className="text-muted-foreground">Última:</span>{" "}
-                              <span>{new Date(pessoa.lastContractDate).toLocaleDateString("pt-BR")}</span>
+                              <span>{pessoa.lastContractDate ? new Date(pessoa.lastContractDate).toLocaleDateString("pt-BR") : "-"}</span>
                             </div>
                           </div>
                           <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
@@ -1236,7 +794,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm">
-                                  {new Date(pessoa.lastContractDate).toLocaleDateString("pt-BR")}
+                                  {pessoa.lastContractDate ? new Date(pessoa.lastContractDate).toLocaleDateString("pt-BR") : "-"}
                                 </span>
                               </TableCell>
                               <TableCell className="max-w-[200px]">
@@ -1272,23 +830,42 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
                   {/* Paginação */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
                     <div className="text-sm text-gray-500">
-                      Página {currentPage} de {totalPages}
+                      Página {currentPage} de {totalPages} ({sortedPessoasData.length} registros)
                     </div>
                     <div className="flex items-center gap-4">
+
+                      {/* Seletor de Página */}
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 hidden sm:inline">Linhas por página:</span>
+                        <span className="text-sm text-gray-500 hidden sm:inline">Ir para:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={totalPages}
+                          className="h-10 w-[60px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-center"
+                          value={currentPage}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val)) {
+                              setCurrentPage(Math.min(Math.max(1, val), totalPages));
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 hidden sm:inline">Itens:</span>
                         <select
-                          className="h-10 w-[70px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          className="h-10 w-[70px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 bg-zinc-950"
                           value={itemsPerPage}
                           onChange={(e) => {
                             setItemsPerPage(Number(e.target.value));
                             setCurrentPage(1);
                           }}
                         >
-                          <option value={10} className="bg-zinc-900">10</option>
-                          <option value={20} className="bg-zinc-900">20</option>
-                          <option value={50} className="bg-zinc-900">50</option>
-                          <option value={100} className="bg-zinc-900">100</option>
+                          <option value={10}>10</option>
+                          <option value={20}>20</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
                         </select>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1335,6 +912,19 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
               />
             )}
           </TabsContent>
+
+          <TabsContent value="debtors" className="space-y-4">
+            {shouldRenderDebtors && (
+              <DebtorsTable
+                debtors={debtors}
+                onNewDebtor={() => setIsNewDebtorModalOpen(true)}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="logs" className="space-y-4">
+            {shouldRenderLogs && <WebhookLogsView />}
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -1348,6 +938,12 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
       <NewFixedCostModal
         open={isNewFixedCostModalOpen}
         onOpenChange={setIsNewFixedCostModalOpen}
+      />
+
+      <NewDebtorModal
+        open={isNewDebtorModalOpen}
+        onOpenChange={setIsNewDebtorModalOpen}
+        people={pessoasData}
       />
 
       {/* Modal de Detalhe do Cliente */}

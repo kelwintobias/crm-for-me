@@ -97,6 +97,11 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
           )}
         </div>
 
+        {/* Observações */}
+        {lead.notes && (
+          <p className="mt-2 text-xs text-zinc-500 line-clamp-2">{lead.notes}</p>
+        )}
+
         {/* Histórico de compras */}
         {lead.contractHistory && (
           <div className="mt-2 pt-2 border-t border-zinc-700/50 flex items-center gap-2">
@@ -128,6 +133,7 @@ export const LeadCard = memo(LeadCardInner, (prev, next) => {
     prev.lead.source === next.lead.source &&
     prev.lead.plan === next.lead.plan &&
     prev.lead.stage === next.lead.stage &&
+    prev.lead.notes === next.lead.notes &&
     prev.lead.addOns === next.lead.addOns &&
     prev.lead.contractHistory?.contractCount === next.lead.contractHistory?.contractCount &&
     prev.isOverlay === next.isOverlay &&

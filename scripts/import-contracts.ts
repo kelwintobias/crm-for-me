@@ -1,4 +1,4 @@
-import { PrismaClient, ContractSource, ContractPackage } from '@prisma/client'
+import { PrismaClient, ContractSource, ContractPackage, PipelineStage } from '@prisma/client'
 import * as fs from 'fs'
 import * as path from 'path'
 import { parse } from 'csv-parse/sync'
@@ -127,8 +127,17 @@ async function main() {
   const deleted = await prisma.contract.deleteMany({})
   console.log(`   Removidos: ${deleted.count} contratos\n`)
 
+  // Opcional: Limpar leads antigos? Nao, vamos apenas atualizar.
+  // Se quiser limpar leads gerados anteriormente, teriamos que ter um criterio.
+
   // 2. Ler todos os CSVs
-  const csvDir = path.join(process.cwd(), 'dbantigodocliente')
+  const csvDir = path.join(process.cwd(), 'csvscontratos')
+
+  if (!fs.existsSync(csvDir)) {
+    console.error(`❌ Diretório não encontrado: ${csvDir}`)
+    process.exit(1)
+  }
+
   const csvFiles = fs.readdirSync(csvDir).filter(f => f.endsWith('.csv'))
 
   console.log(`📁 Arquivos CSV encontrados: ${csvFiles.length}`)
@@ -137,6 +146,7 @@ async function main() {
 
   let totalImportados = 0
   let totalErros = 0
+  let leadsAtualizados = 0
   const totaisPorMes: Record<string, { count: number; valor: number }> = {}
 
   for (const file of csvFiles) {
@@ -170,27 +180,71 @@ async function main() {
           continue
         }
 
+        const cleanPhone = normalizePhone(whatsapp)
         const contractDate = parseData(data)
         const totalValue = parseValor(valor)
+        const source = mapOrigemToSource(origem)
+        const packageType = mapPacote(pacote)
+        const addons = mapAdicionais(adicionais)
 
         // Criar contrato
         await prisma.contract.create({
           data: {
             clientName: nome.trim(),
             email: email.trim() || null,
-            whatsapp: normalizePhone(whatsapp),
+            whatsapp: cleanPhone,
             instagram: instagram.trim() || null,
             cpf: cpf.trim() || null,
             contractDate,
-            source: mapOrigemToSource(origem),
-            package: mapPacote(pacote),
-            addons: mapAdicionais(adicionais),
+            source,
+            package: packageType,
+            addons,
             termsAccepted: declaracao.toLowerCase().includes('aceito'),
             totalValue,
             userId: DEFAULT_USER_ID
           }
         })
 
+        // Sincronizar LEAD (Upsert)
+        // Se já existe pelo telefone, atualiza status para FINALIZADO.
+        // Se não existe, cria como FINALIZADO.
+        const existingLead = await prisma.lead.findFirst({
+          where: { phone: { contains: cleanPhone } } // Busca meio "fuzzy" ou exata? contains é perigoso se for curto. 
+          // Melhor buscar exato se possivel, mas phone format pode variar.
+          // Vamos tentar buscar tudo e filtrar no codigo ou usar endsWith
+        })
+
+        // Estrategia: Buscar pelo telefone exato ou final dele
+        const lead = await prisma.lead.findFirst({
+          where: {
+            phone: cleanPhone
+          }
+        }) || await prisma.lead.create({
+          data: {
+            name: nome.trim(),
+            phone: cleanPhone,
+            source: "OUTRO", // Importado
+            userId: DEFAULT_USER_ID,
+            stage: "FINALIZADO",
+            value: totalValue
+          }
+        })
+
+        // Atualizar lead existente ou recem criado
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: {
+            stage: "FINALIZADO", // Força finalizado pois tem contrato
+            value: totalValue, // Atualiza valor
+            contractDate: contractDate, // Atualiza data da venda
+            packageType: packageType,
+            email: email.trim() || lead.email,
+            instagram: instagram.trim() || lead.instagram,
+            cpf: cpf.trim() || lead.cpf
+          }
+        })
+
+        leadsAtualizados++
         totalImportados++
 
         // Acumular totais por mês
@@ -209,7 +263,8 @@ async function main() {
   }
 
   console.log(`\n✅ Importação concluída!`)
-  console.log(`   - Total importados: ${totalImportados}`)
+  console.log(`   - Contratos criados: ${totalImportados}`)
+  console.log(`   - Leads sincronizados: ${leadsAtualizados}`)
   console.log(`   - Erros: ${totalErros}`)
 
   // 3. Exibir totais por mês
@@ -249,17 +304,6 @@ async function main() {
   })
 
   console.log(`\n💰 TOTAL GERAL: ${totalGeral._count} contratos | R$ ${Number(totalGeral._sum.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
-
-  // 5. Verificar distribuição por origem
-  const porOrigem = await prisma.contract.groupBy({
-    by: ['source'],
-    _count: { source: true }
-  })
-
-  console.log(`\n📈 Distribuição por origem:`)
-  for (const o of porOrigem) {
-    console.log(`   - ${o.source}: ${o._count.source}`)
-  }
 }
 
 main()

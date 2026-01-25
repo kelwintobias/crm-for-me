@@ -32,15 +32,47 @@ const logPayload = (payload: unknown, source: string) => {
 };
 
 export async function POST(req: NextRequest) {
+    let rawBody = "";
     try {
-        // Parse do Body
-        const body = await req.json();
+        // Ler body como texto para garantir que podemos logar exatamente o que chegou
+        rawBody = await req.text();
 
-        // Log do payload
+        let body: any = {};
+        try {
+            if (rawBody) {
+                body = JSON.parse(rawBody);
+            }
+        } catch (e) {
+            console.error("Error parsing JSON:", e);
+            // Log de erro de JSON inválido
+            await prisma.webhookLog.create({
+                data: {
+                    provider: "botconversa",
+                    event: "json_parse_error",
+                    payload: rawBody || "(empty)",
+                    status: "ERROR",
+                    error: "Invalid JSON format",
+                }
+            });
+            return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
+        }
+
+        // Log do payload (console)
         logPayload(body, req.headers.get("user-agent") || "unknown");
+
+        // Log entrada no banco (antes de processar, ou depois? Se falhar processamento, atualiza status?)
+        // Vamos logar o resultado final.
 
         // Teste de conexão
         if (body.test === true || body.action === "test") {
+            await prisma.webhookLog.create({
+                data: {
+                    provider: "botconversa",
+                    event: "test_connection",
+                    payload: rawBody,
+                    status: "SUCCESS",
+                }
+            });
             return NextResponse.json({
                 success: true,
                 message: "Webhook BotConversa ativo!",
@@ -63,6 +95,15 @@ export async function POST(req: NextRequest) {
         // Validação básica
         if (!phone) {
             console.error("[WEBHOOK BOTCONVERSA] Erro: Telefone não encontrado no payload");
+            await prisma.webhookLog.create({
+                data: {
+                    provider: "botconversa",
+                    event: "validation_error",
+                    payload: rawBody,
+                    status: "ERROR",
+                    error: "Phone number missing in payload",
+                }
+            });
             return NextResponse.json(
                 { success: false, error: "Phone number is required" },
                 { status: 400 }
@@ -97,6 +138,15 @@ export async function POST(req: NextRequest) {
             const anyUser = await prisma.user.findFirst();
             if (!anyUser) {
                 console.error("[WEBHOOK BOTCONVERSA] Erro: Nenhum usuário encontrado no CRM");
+                await prisma.webhookLog.create({
+                    data: {
+                        provider: "botconversa",
+                        event: "system_error",
+                        payload: rawBody,
+                        status: "ERROR",
+                        error: "No users found in CRM",
+                    }
+                });
                 return NextResponse.json(
                     { success: false, error: "No users found in CRM to assign lead" },
                     { status: 500 }
@@ -110,11 +160,39 @@ export async function POST(req: NextRequest) {
             name,
             phone,
             source: finalSource,
-            stage: "NOVO_LEAD", // Alterado para NOVO_LEAD como padrão de entrada
+            stage: "EM_NEGOCIACAO", // Alterado para EM_NEGOCIACAO conforme solicitado
             userId: userId
         });
 
         console.log(`[WEBHOOK BOTCONVERSA] Lead criado com sucesso: ${lead.id} (${lead.name})`);
+
+        // Log Sucesso com detalhes da ação executada
+        const actionDetails = {
+            action: "LEAD_CREATED",
+            leadId: lead.id,
+            leadName: lead.name,
+            leadPhone: phone,
+            leadSource: finalSource,
+            leadStage: "EM_NEGOCIACAO",
+            assignedTo: userId,
+            receivedData: {
+                rawName: body.name || body.first_name,
+                rawPhone: body.phone || body.phone_number || body.whatsapp || body.celular,
+                rawSource: body.source || body.origem,
+            }
+        };
+
+        await prisma.webhookLog.create({
+            data: {
+                provider: "botconversa",
+                event: "lead_created",
+                payload: JSON.stringify({
+                    received: JSON.parse(rawBody),
+                    processed: actionDetails,
+                }, null, 2),
+                status: "SUCCESS",
+            }
+        });
 
         return NextResponse.json({
             success: true,
@@ -124,6 +202,18 @@ export async function POST(req: NextRequest) {
 
     } catch (error) {
         console.error("[WEBHOOK BOTCONVERSA] Erro Interno:", error);
+
+        // Log de erro
+        await prisma.webhookLog.create({
+            data: {
+                provider: "botconversa",
+                event: "internal_error",
+                payload: rawBody || "Error before body read",
+                status: "ERROR",
+                error: error instanceof Error ? error.message : "Unknown error",
+            }
+        });
+
         return NextResponse.json(
             { success: false, error: "Internal Server Error", details: error instanceof Error ? error.message : "Unknown" },
             { status: 500 }

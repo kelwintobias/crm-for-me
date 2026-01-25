@@ -13,6 +13,45 @@
 
   body {
     @apply bg-brand-bg text-text-primary antialiased font-sans;
+    /* PERF: Otimizações de renderização para mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* PERF: Força GPU acceleration em elementos com animação */
+  .will-change-transform {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* PERF: Previne layout thrashing em scroll */
+  .contain-layout {
+    contain: layout;
+  }
+
+  .contain-paint {
+    contain: paint;
+  }
+
+  .contain-strict {
+    contain: strict;
+  }
+
+  /* PERF: Touch action para scroll suave no mobile */
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+
+  /* PERF: Previne text selection durante drag */
+  .select-none-important {
+    user-select: none !important;
+    -webkit-user-select: none !important;
   }
 
   /* Selection styling */

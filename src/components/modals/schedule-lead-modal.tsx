@@ -168,17 +168,13 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
     }
   };
 
-  // Desabilitar datas no passado e fins de semana
+  // Desabilitar apenas datas no passado (permite qualquer dia da semana)
   const isDateDisabled = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Desabilita datas no passado
-    if (date < today) return true;
-
-    // Desabilita sábado (6) e domingo (0)
-    const day = date.getDay();
-    return day === 0 || day === 6;
+    // Desabilita apenas datas no passado
+    return date < today;
   };
 
   return (

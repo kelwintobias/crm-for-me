@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ContractPackage, ContractSource, PipelineStage } from "@prisma/client";
+import { ContractPackage, ContractSource, PipelineStage, PlanType } from "@prisma/client";
 import {
     calculateTotalValue,
     PACKAGE_LABELS,
     ADDON_LABELS,
     ADDON_PRICES
 } from "@/lib/contract-constants";
+
+// Mapeamento de ContractPackage para PlanType
+// Isso garante que o plano do lead reflita o pacote do contrato
+function contractPackageToPlanType(pkg: ContractPackage): PlanType {
+    const mapping: Record<ContractPackage, PlanType> = {
+        INTERMEDIARIO: "INTERMEDIARIO",
+        AVANCADO: "AVANCADO",
+        ELITE: "ELITE",
+        PRO_PLUS: "PRO_PLUS",
+        ULTRA_PRO: "ULTRA_PRO",
+        EVOLUTION: "EVOLUTION",
+    };
+    return mapping[pkg] || "INDEFINIDO";
+}
 
 // ===========================================
 // WEBHOOK: RECEBER CONTRATOS VIA HTTP (CUSTOM FORMAT)
@@ -118,12 +132,23 @@ function parseDateString(raw: string): Date {
 // ===========================================
 
 export async function POST(request: Request) {
+    let rawPayload = "";
     try {
         const payload = await request.json();
+        rawPayload = JSON.stringify(payload);
         logPayload(payload, request.headers.get("user-agent") || "unknown");
 
         // Validação básica
         if (!payload.clientName || !payload.whatsapp) {
+            await prisma.webhookLog.create({
+                data: {
+                    provider: "pluga",
+                    event: "validation_error",
+                    payload: rawPayload,
+                    status: "ERROR",
+                    error: "Campos obrigatórios: clientName, whatsapp",
+                }
+            });
             return NextResponse.json(
                 { success: false, error: "Campos obrigatórios: clientName, whatsapp" },
                 { status: 400 }
@@ -200,10 +225,14 @@ export async function POST(request: Request) {
         });
 
         if (lead) {
+            // Atualiza o lead com os dados do contrato, incluindo o plano
+            const leadPlan = contractPackageToPlanType(contractPackage);
+
             await prisma.lead.update({
                 where: { id: lead.id },
                 data: {
                     stage: PipelineStage.FINALIZADO,
+                    plan: leadPlan, // Sincroniza o plano do lead com o pacote do contrato
                     email: email || lead.email,
                     instagram: instagram || lead.instagram,
                     cpf: cpf || lead.cpf,
@@ -215,6 +244,41 @@ export async function POST(request: Request) {
             });
             leadUpdated = true;
         }
+
+        // Log sucesso com detalhes da ação executada
+        const actionDetails = {
+            action: "CONTRACT_CREATED",
+            contractId: contract.id,
+            clientName: contract.clientName,
+            clientPhone: normalizedPhone,
+            package: contractPackage,
+            packageLabel: PACKAGE_LABELS[contractPackage],
+            source: contractSource,
+            addons: addons,
+            totalValue: totalValue,
+            leadUpdated: leadUpdated,
+            leadId: lead?.id || null,
+            receivedData: {
+                rawClientName: payload.clientName,
+                rawWhatsapp: payload.whatsapp,
+                rawPackage: payload.package,
+                rawSource: payload.source,
+                rawAddons: payload.addons,
+                rawContractDate: payload.contractDate,
+            }
+        };
+
+        await prisma.webhookLog.create({
+            data: {
+                provider: "pluga",
+                event: "contract_created",
+                payload: JSON.stringify({
+                    received: payload,
+                    processed: actionDetails,
+                }, null, 2),
+                status: "SUCCESS",
+            }
+        });
 
         return NextResponse.json({
             success: true,
@@ -230,6 +294,18 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error("[WEBHOOK ERROR]", error);
+
+        // Log erro
+        await prisma.webhookLog.create({
+            data: {
+                provider: "pluga",
+                event: "internal_error",
+                payload: rawPayload || "Error before body read",
+                status: "ERROR",
+                error: error instanceof Error ? error.message : "Unknown error",
+            }
+        }).catch(() => {}); // Não falhar se o log falhar
+
         return NextResponse.json(
             { success: false, error: error instanceof Error ? error.message : "Erro interno" },
             { status: 500 }
