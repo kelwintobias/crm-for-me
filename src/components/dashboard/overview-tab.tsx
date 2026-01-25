@@ -15,11 +15,12 @@ import { InsightsCard } from "./insights-card";
 import { SourceDistributionChart } from "./source-distribution-chart";
 import { PlainLead, PlainUser } from "@/types";
 import { PlainContract } from "@/components/contracts/contracts-table";
+import { PlainAppointmentData } from "./dashboard-view";
 
 interface OverviewTabProps {
     user: PlainUser;
     leads: PlainLead[];
-    appointments: any[]; // Define type if available
+    appointments: PlainAppointmentData[];
     contracts: PlainContract[];
     selectedMonths: string[];
     onSelectionChange: (months: string[]) => void;
@@ -172,7 +173,7 @@ export function OverviewTab({
         const totalLeads = filteredLeads.length;
         // Conversão = leads que avançaram de EM_NEGOCIACAO para AGENDADO ou além
         const convertedLeads = filteredLeads.filter(l =>
-          ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"].includes(l.stage)
+            ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"].includes(l.stage)
         ).length;
         // Taxa de conversão baseada em leads que chegaram em AGENDADO+
         const taxaConversao = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;

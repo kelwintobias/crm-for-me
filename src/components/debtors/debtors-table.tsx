@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-interface Debtor {
+export interface Debtor {
     id: string;
     clientName: string;
     phone: string;

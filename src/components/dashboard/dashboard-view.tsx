@@ -21,8 +21,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { Debtor } from "../debtors/debtors-table";
 import {
   Table,
   TableBody,
@@ -122,7 +124,7 @@ const WebhookLogsView = dynamic(() => import("../webhook-logs/webhook-logs-view"
   loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
 });
 
-interface ContractMetricsData {
+export interface ContractMetricsData {
   kpis: {
     totalRevenue: number;
     monthlyRevenue: number;
@@ -152,7 +154,7 @@ interface ContractMetricsData {
   };
 }
 
-interface PlainAppointmentData {
+export interface PlainAppointmentData {
   id: string;
   scheduledAt: string;
   status: string;
@@ -206,7 +208,7 @@ interface DashboardViewProps {
   };
   contractMetrics: ContractMetricsData;
   pessoasData: import("@/app/actions/pessoas").PessoaData[];
-  debtors: any[];
+  debtors: Debtor[];
 }
 
 // PERF: Reducer para consolidar estados de modais (reduz re-renders de 8+ para 1)

@@ -12,9 +12,12 @@ import { ContractSourceChart } from "./contract-source-chart";
 import { ContractsCountChart } from "./contracts-count-chart";
 import { FinancialInsightsCard } from "./financial-insights-card";
 
+import { PlainContract } from "@/components/contracts/contracts-table";
+import { ContractMetricsData } from "./dashboard-view";
+
 interface FinancialTabProps {
-    contracts: any[]; // PlainContract
-    contractMetrics: any; // ContractMetricsData
+    contracts: PlainContract[];
+    contractMetrics: ContractMetricsData;
     selectedMonths: string[];
     onSelectionChange: (months: string[]) => void;
 }

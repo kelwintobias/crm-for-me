@@ -71,6 +71,7 @@ export default async function AdminLogsPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 logs.map((log: any) => (
                                     <TableRow key={log.id}>
                                         <TableCell className="whitespace-nowrap">

@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
         // Ler body como texto para garantir que podemos logar exatamente o que chegou
         rawBody = await req.text();
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any = {};
         try {
             if (rawBody) {
