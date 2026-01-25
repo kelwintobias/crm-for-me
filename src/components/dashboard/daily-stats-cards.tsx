@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Calendar, XCircle, UserX, Users } from "lucide-react";
+import { Calendar, XCircle, UserX, Users } from "lucide-react";
 
 interface DailyStatsCardsProps {
   data: {

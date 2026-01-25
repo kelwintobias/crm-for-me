@@ -30,17 +30,10 @@ import {
     Calendar,
     DollarSign,
     CheckCircle2,
-    MoreVertical,
     Clock
 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Badge } from "@/components/ui/badge";
 
 export interface Debtor {

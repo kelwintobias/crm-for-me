@@ -24,7 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createDebtor } from "@/app/actions/debtors";
-import { Loader2, Search, User, Phone, X } from "lucide-react";
+import {
+    Loader2, Search, User, X
+} from "lucide-react";
 import { cn, formatPhone } from "@/lib/utils";
 
 const formSchema = z.object({
@@ -123,7 +125,7 @@ export function NewDebtorModal({ open, onOpenChange, people = [] }: NewDebtorMod
             } else {
                 toast.error(result.error || "Erro ao registrar");
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error("Erro ao registrar");
         } finally {
             setIsLoading(false);

@@ -3,12 +3,11 @@
 import { useState, useCallback, useMemo, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "../layout/header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KPICards } from "./kpi-cards";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 import { PlainUser, PlainLead } from "@/types";
 import { PlainContract } from "@/components/contracts/contracts-table";
 import type { PlainFixedCost } from "@/app/actions/fixed-costs";

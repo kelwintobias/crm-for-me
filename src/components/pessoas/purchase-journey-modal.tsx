@@ -88,7 +88,7 @@ export function PurchaseJourneyModal({
                                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
 
                                 <div className="space-y-6">
-                                    {contracts.map((contract, index) => (
+                                    {contracts.map((contract, _index) => (
                                         <div key={contract.id} className="relative pl-10">
                                             {/* Timeline dot */}
                                             <div className="absolute left-2.5 w-3 h-3 rounded-full bg-brand-accent border-2 border-background" />

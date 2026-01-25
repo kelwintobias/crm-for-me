@@ -135,7 +135,6 @@ export const SOURCE_BADGE_VARIANTS: Record<
   INFLUENCER: "influencer",
   ANUNCIO: "anuncio",
   OUTRO: "secondary",
-  // @ts-ignore - Fallback for legacy Google leads
   GOOGLE: "secondary",
 };
 
