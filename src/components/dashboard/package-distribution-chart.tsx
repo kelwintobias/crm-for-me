@@ -73,18 +73,20 @@ export function PackageDistributionChart({ data }: PackageDistributionChartProps
                         </Pie>
                         <Tooltip
                             contentStyle={{
-                                backgroundColor: "hsl(var(--card))",
-                                borderColor: "hsl(var(--border))",
+                                backgroundColor: "#18181B",
+                                borderColor: "#3F3F46",
                                 borderRadius: "8px",
+                                padding: "12px 16px",
                             }}
+                            labelStyle={{ color: "#FFFFFF", fontWeight: 600 }}
                             formatter={(value, name, props) => {
                                 const revenue = props.payload?.revenue || 0;
                                 return [
                                     <div key="tooltip" className="space-y-1">
-                                        <div>{value} contratos</div>
-                                        <div className="text-emerald-500">{formatCurrency(revenue)}</div>
+                                        <div className="text-zinc-200">{value} contratos</div>
+                                        <div className="text-emerald-400 font-medium">{formatCurrency(revenue)}</div>
                                     </div>,
-                                    String(name),
+                                    <span key="name" className="text-white font-medium">{String(name)}</span>,
                                 ];
                             }}
                         />

@@ -106,19 +106,16 @@ export async function getDashboardMetrics() {
         },
       }),
 
-      // 6. Grafico: Evolucao de Receita (ultimos 3 meses)
-      prisma.lead.findMany({
+      // 6. Grafico: Evolucao de Receita (ultimos 3 meses) - Baseado em CONTRATOS
+      prisma.contract.findMany({
         where: {
-          stage: { in: ["POS_VENDA", "FINALIZADO"] },
-          createdAt: { gte: subMonths(new Date(), 3) },
-          deletedAt: null,
+          contractDate: { gte: subMonths(new Date(), 3) },
         },
         select: {
-          createdAt: true,
-          value: true,
-          plan: true,
+          contractDate: true,
+          totalValue: true,
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: { contractDate: "asc" },
       }),
 
       // 7. KPI Anterior: Faturamento do mes passado
@@ -264,7 +261,7 @@ export async function getDashboardMetrics() {
       }),
     ]);
 
-    // Processa dados do grafico de evolucao mensal
+    // Processa dados do grafico de evolucao mensal (baseado em CONTRATOS)
     // Usa yyyy-MM como chave para ordenação cronológica correta
     const monthlyRevenueMap = new Map<
       string,
@@ -285,10 +282,11 @@ export async function getDashboardMetrics() {
       });
     }
 
-    // Preenche com dados reais
-    revenueByMonth.forEach((lead) => {
-      const sortKey = format(lead.createdAt, "yyyy-MM");
-      const monthName = format(lead.createdAt, "MMM/yy", { locale: ptBR }).toUpperCase();
+    // Preenche com dados reais dos CONTRATOS
+    // Regra: valor >= 300 = mensal (verde), valor < 300 = unico (azul)
+    revenueByMonth.forEach((contract) => {
+      const sortKey = format(contract.contractDate, "yyyy-MM");
+      const monthName = format(contract.contractDate, "MMM/yy", { locale: ptBR }).toUpperCase();
 
       if (!monthlyRevenueMap.has(sortKey)) {
         monthlyRevenueMap.set(sortKey, {
@@ -301,16 +299,15 @@ export async function getDashboardMetrics() {
       }
 
       const entry = monthlyRevenueMap.get(sortKey)!;
-      const val = Number(lead.value);
+      const val = Number(contract.totalValue);
 
-      // Agrupa por tipo de plano (basicos vs premium)
-      const basicPlans = ["INTERMEDIARIO", "AVANCADO"];
-      const premiumPlans = ["ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"];
-
-      if (basicPlans.includes(lead.plan)) {
-        entry.unico += val;
-      } else if (premiumPlans.includes(lead.plan)) {
+      // Agrupa por valor do contrato
+      // >= 300 = Plano Mensal (verde)
+      // < 300 = Plano Único (azul)
+      if (val >= 300) {
         entry.mensal += val;
+      } else {
+        entry.unico += val;
       }
       entry.total += val;
     });

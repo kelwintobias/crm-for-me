@@ -62,9 +62,9 @@ export function AppointmentsChart({ data }: AppointmentsChartProps) {
                   const item = payload[0].payload as AppointmentStatus;
                   const percent = ((item.value / total) * 100).toFixed(1);
                   return (
-                    <div className="bg-brand-card border border-white/10 rounded-lg p-3 shadow-lg">
-                      <p className="text-text-primary font-medium">{item.name}</p>
-                      <p className="text-text-secondary text-sm">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 shadow-xl">
+                      <p className="text-white font-semibold">{item.name}</p>
+                      <p className="text-zinc-300 text-sm">
                         {item.value} ({percent}%)
                       </p>
                     </div>

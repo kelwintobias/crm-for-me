@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -101,9 +101,9 @@ export async function createUser(formData: FormData) {
 
     const validated = createUserSchema.parse(rawData);
 
-    // Criar usuário no Supabase Auth
-    const supabase = await createClient();
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    // Criar usuário no Supabase Auth (requer service_role key)
+    const supabaseAdmin = createAdminClient();
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: validated.email,
       password: validated.password,
       email_confirm: true,
@@ -310,9 +310,9 @@ export async function deleteUser(userId: string) {
       throw new Error("Usuário não encontrado");
     }
 
-    // Deletar do Supabase Auth
-    const supabase = await createClient();
-    const { error } = await supabase.auth.admin.deleteUser(userId);
+    // Deletar do Supabase Auth (requer service_role key)
+    const supabaseAdmin = createAdminClient();
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (error) {
       throw new Error(`Erro ao deletar usuário do Supabase: ${error.message}`);

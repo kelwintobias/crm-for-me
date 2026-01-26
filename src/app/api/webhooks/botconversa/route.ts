@@ -158,12 +158,67 @@ export async function POST(req: NextRequest) {
             userId = anyUser.id;
         }
 
-        // Cria o lead
+        // Verificar se lead já existe pelo telefone
+        const existingLead = await prisma.lead.findFirst({
+            where: { phone },
+        });
+
+        if (existingLead) {
+            // Lead já existe - apenas move para EM_NEGOCIACAO e atualiza source
+            const updatedLead = await prisma.lead.update({
+                where: { id: existingLead.id },
+                data: {
+                    stage: "EM_NEGOCIACAO",
+                    source: finalSource !== "OUTRO" ? finalSource : existingLead.source, // Só atualiza se tiver source definida
+                    name: name !== "Lead sem Nome" ? name : existingLead.name, // Atualiza nome se vier um nome válido
+                },
+            });
+
+            console.log(`[WEBHOOK BOTCONVERSA] Lead movido para EM_NEGOCIACAO: ${updatedLead.id} (${updatedLead.name})`);
+
+            const actionDetails = {
+                action: "LEAD_MOVED",
+                leadId: updatedLead.id,
+                leadName: updatedLead.name,
+                leadPhone: phone,
+                leadSource: updatedLead.source,
+                previousStage: existingLead.stage,
+                newStage: "EM_NEGOCIACAO",
+                receivedData: {
+                    rawName: body.name || body.first_name,
+                    rawPhone: body.phone || body.phone_number || body.whatsapp || body.celular,
+                    rawSource: body.source || body.origem,
+                }
+            };
+
+            await prisma.webhookLog.create({
+                data: {
+                    provider: "botconversa",
+                    event: "lead_moved",
+                    payload: JSON.stringify({
+                        received: JSON.parse(rawBody),
+                        processed: actionDetails,
+                    }, null, 2),
+                    status: "SUCCESS",
+                }
+            });
+
+            return NextResponse.json({
+                success: true,
+                action: "moved",
+                leadId: updatedLead.id,
+                previousStage: existingLead.stage,
+                newStage: "EM_NEGOCIACAO",
+                mappedSource: updatedLead.source,
+            });
+        }
+
+        // Lead não existe - cria novo em EM_NEGOCIACAO
         const lead = await createLeadService({
             name,
             phone,
             source: finalSource,
-            stage: "EM_NEGOCIACAO", // Alterado para EM_NEGOCIACAO conforme solicitado
+            stage: "EM_NEGOCIACAO",
             userId: userId
         });
 
@@ -199,6 +254,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             success: true,
+            action: "created",
             leadId: lead.id,
             mappedSource: finalSource
         });

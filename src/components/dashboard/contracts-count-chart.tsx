@@ -69,7 +69,7 @@ export function ContractsCountChart({ data }: ContractsCountChartProps) {
                                 <stop offset="100%" stopColor="#6366F1" stopOpacity={0.8} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                         <XAxis
                             dataKey="month"
                             stroke="#888888"
@@ -87,12 +87,14 @@ export function ContractsCountChart({ data }: ContractsCountChartProps) {
                         <Tooltip
                             cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             contentStyle={{
-                                backgroundColor: "hsl(var(--card))",
-                                borderColor: "hsl(var(--border))",
+                                backgroundColor: "#18181B",
+                                borderColor: "#3F3F46",
                                 borderRadius: "8px",
+                                padding: "12px 16px",
                             }}
-                            formatter={(value) => [`${value} contratos`, "Quantidade"]}
-                            labelStyle={{ color: "hsl(var(--foreground))" }}
+                            formatter={(value) => [<span key="v" className="text-zinc-200">{value} contratos</span>, <span key="n" className="text-white font-medium">Quantidade</span>]}
+                            labelStyle={{ color: "#FFFFFF", fontWeight: 600, marginBottom: "8px" }}
+                            itemStyle={{ color: "#E4E4E7" }}
                         />
                         <Bar
                             dataKey="contratos"

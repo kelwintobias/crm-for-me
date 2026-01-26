@@ -63,7 +63,7 @@ export function ContractRevenueChart({ data, growth = 0 }: ContractRevenueChartP
                                 <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                         <XAxis
                             dataKey="month"
                             stroke="#888888"
@@ -90,15 +90,17 @@ export function ContractRevenueChart({ data, growth = 0 }: ContractRevenueChartP
                         <Tooltip
                             cursor={{ fill: "rgba(255,255,255,0.05)" }}
                             contentStyle={{
-                                backgroundColor: "hsl(var(--card))",
-                                borderColor: "hsl(var(--border))",
+                                backgroundColor: "#18181B",
+                                borderColor: "#3F3F46",
                                 borderRadius: "8px",
+                                padding: "12px 16px",
                             }}
                             formatter={(value, name) => {
                                 if (name === "receita") return [formatCurrency(Number(value)), "Receita"];
                                 return [value, "Contratos"];
                             }}
-                            labelStyle={{ color: "hsl(var(--foreground))" }}
+                            labelStyle={{ color: "#FFFFFF", fontWeight: 600, marginBottom: "8px" }}
+                            itemStyle={{ color: "#E4E4E7" }}
                         />
                         <Legend
                             wrapperStyle={{ paddingTop: "20px" }}

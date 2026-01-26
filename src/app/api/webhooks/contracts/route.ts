@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ContractPackage, ContractSource, PipelineStage, PlanType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import {
     calculateTotalValue,
     PACKAGE_LABELS,
@@ -244,6 +245,9 @@ export async function POST(request: Request) {
             });
             leadUpdated = true;
         }
+
+        // Revalidar cache para atualizar a UI
+        revalidatePath("/");
 
         // Log sucesso com detalhes da ação executada
         const actionDetails = {

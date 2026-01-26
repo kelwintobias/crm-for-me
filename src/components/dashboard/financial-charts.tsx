@@ -47,18 +47,18 @@ function formatMonth(monthStr: string): string {
 function CustomBarTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-brand-card border border-white/10 rounded-lg p-3 shadow-xl">
-        <p className="text-text-primary font-medium mb-2">{formatMonth(label || "")}</p>
+      <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 shadow-xl">
+        <p className="text-white font-semibold mb-2">{formatMonth(label || "")}</p>
         {payload.map((entry, index) => (
           <div key={index} className="flex items-center gap-2 text-sm">
             <div
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-text-secondary">
+            <span className="text-zinc-300">
               {entry.dataKey === "vendaUnica" ? "Venda Única" : "Assinatura"}:
             </span>
-            <span className="text-text-primary font-medium">
+            <span className="text-white font-medium">
               {formatCurrency(entry.value)}
             </span>
           </div>
@@ -74,15 +74,15 @@ function CustomPieTooltip({ active, payload }: { active?: boolean; payload?: Arr
   if (active && payload && payload.length) {
     const data = payload[0];
     return (
-      <div className="bg-brand-card border border-white/10 rounded-lg p-3 shadow-xl">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 shadow-xl">
         <div className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-full"
             style={{ backgroundColor: data.payload.fill }}
           />
-          <span className="text-text-primary font-medium">{data.name}</span>
+          <span className="text-white font-semibold">{data.name}</span>
         </div>
-        <p className="text-text-secondary text-sm mt-1">
+        <p className="text-zinc-300 text-sm mt-1">
           {data.value} vendas
         </p>
       </div>

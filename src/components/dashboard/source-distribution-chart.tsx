@@ -75,13 +75,16 @@ export function SourceDistributionChart({ data }: SourceDistributionChartProps) 
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                borderColor: "hsl(var(--border))",
+                backgroundColor: "#18181B",
+                borderColor: "#3F3F46",
                 borderRadius: "8px",
+                padding: "12px 16px",
               }}
+              labelStyle={{ color: "#FFFFFF", fontWeight: 600 }}
+              itemStyle={{ color: "#E4E4E7" }}
               formatter={(value, name) => [
-                `${value} leads`,
-                String(name),
+                <span key="value" className="text-zinc-200">{value} leads</span>,
+                <span key="name" className="text-white font-medium">{String(name)}</span>,
               ]}
             />
             <Legend

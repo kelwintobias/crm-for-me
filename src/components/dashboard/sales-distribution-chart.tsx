@@ -56,13 +56,16 @@ export function SalesDistributionChart({ data }: SalesDistributionChartProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                borderColor: "hsl(var(--border))",
+                backgroundColor: "#18181B",
+                borderColor: "#3F3F46",
                 borderRadius: "8px",
+                padding: "12px 16px",
               }}
+              labelStyle={{ color: "#FFFFFF", fontWeight: 600 }}
+              itemStyle={{ color: "#E4E4E7" }}
               formatter={(value, name) => [
-                `${value} vendas`,
-                String(name),
+                <span key="value" className="text-zinc-200">{value} vendas</span>,
+                <span key="name" className="text-white font-medium">{String(name)}</span>,
               ]}
             />
             <Legend

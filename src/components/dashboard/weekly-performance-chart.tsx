@@ -50,9 +50,9 @@ export function WeeklyPerformanceChart({ data }: WeeklyPerformanceChartProps) {
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-brand-card border border-white/10 rounded-lg p-3 shadow-lg">
-                      <p className="text-text-primary font-medium">{label}</p>
-                      <p className="text-text-secondary text-sm">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 shadow-xl">
+                      <p className="text-white font-semibold">{label}</p>
+                      <p className="text-zinc-300 text-sm">
                         {payload[0].value} atendimentos
                       </p>
                     </div>
