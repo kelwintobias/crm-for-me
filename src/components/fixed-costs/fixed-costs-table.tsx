@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useRealtimeFixedCosts } from "@/hooks/use-realtime-fixed-costs";
 import {
     Table,
     TableBody,
@@ -52,6 +53,20 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
         const currentMonthYear = format(now, "MMMM yyyy", { locale: ptBR });
         return new Set([currentMonthYear]);
     });
+    const [localCosts, setLocalCosts] = useState(costs);
+
+    // Sync props com estado local (quando props mudam)
+    useEffect(() => {
+        setLocalCosts(costs);
+    }, [costs]);
+
+    // Função de refresh para realtime
+    const refreshCosts = useCallback(() => {
+        router.refresh();
+    }, [router]);
+
+    // Hook de realtime
+    useRealtimeFixedCosts(refreshCosts);
 
     const toggleMonth = (monthYear: string) => {
         setExpandedMonths(prev => {
@@ -69,7 +84,7 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
     const groupedCosts = useMemo(() => {
         const groups: Record<string, PlainFixedCost[]> = {};
 
-        costs.forEach(cost => {
+        localCosts.forEach(cost => {
             const date = new Date(cost.date);
             const key = format(date, "MMMM yyyy", { locale: ptBR });
 
@@ -91,7 +106,7 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
             costs: groups[key],
             total: groups[key].reduce((sum, c) => sum + c.value, 0),
         }));
-    }, [costs]);
+    }, [localCosts]);
 
     const handleDelete = async () => {
         if (!deleteId) return;
@@ -110,7 +125,7 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
         setDeleteId(null);
     };
 
-    if (costs.length === 0) {
+    if (localCosts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4">

@@ -41,3 +41,7 @@ next-env.d.ts
 .idea
 .vscode
 dbantigodocliente/
+
+# Data files
+*.csv
+csvscontratos/

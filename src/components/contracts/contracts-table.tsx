@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useRealtimeContracts } from "@/hooks/use-realtime-contracts";
 import {
     Table,
     TableBody,
@@ -93,6 +94,20 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
         // Janeiro 2026 expandido por padrão
         return new Set(["janeiro 2026"]);
     });
+    const [localContracts, setLocalContracts] = useState(contracts);
+
+    // Sync props com estado local (quando props mudam)
+    useEffect(() => {
+        setLocalContracts(contracts);
+    }, [contracts]);
+
+    // Função de refresh para realtime
+    const refreshContracts = useCallback(() => {
+        router.refresh();
+    }, [router]);
+
+    // Hook de realtime
+    useRealtimeContracts(refreshContracts);
 
     const toggleMonth = (monthYear: string) => {
         setExpandedMonths(prev => {
@@ -110,7 +125,7 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
     const groupedContracts = useMemo(() => {
         const groups: Record<string, PlainContract[]> = {};
 
-        contracts.forEach(contract => {
+        localContracts.forEach(contract => {
             const date = new Date(contract.contractDate);
             const key = format(date, "MMMM yyyy", { locale: ptBR });
 
@@ -132,7 +147,7 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
             contracts: groups[key],
             total: groups[key].reduce((sum, c) => sum + c.totalValue, 0),
         }));
-    }, [contracts]);
+    }, [localContracts]);
 
     const handleDelete = async () => {
         if (!deleteId) return;
@@ -151,7 +166,7 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
         setDeleteId(null);
     };
 
-    if (contracts.length === 0) {
+    if (localContracts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">

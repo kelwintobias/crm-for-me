@@ -1,28 +1,39 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PlainLead } from "@/types";
 
 type SetLeads = React.Dispatch<React.SetStateAction<PlainLead[]>>;
 
 export function useRealtimeLeads(setLeads: SetLeads) {
+  const supabaseRef = useRef(createClient());
+
   useEffect(() => {
-    const supabase = createClient();
+    const supabase = supabaseRef.current;
+
     const channel = supabase
-      .channel("kanban-realtime")
+      .channel("leads-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "leads" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setLeads((prev) => [payload.new as PlainLead, ...prev]);
+            const newLead = payload.new as PlainLead;
+            // Só adiciona se não for soft deleted
+            if (!newLead.deletedAt) {
+              setLeads((prev) => [newLead, ...prev]);
+            }
           } else if (payload.eventType === "UPDATE") {
-            setLeads((prev) =>
-              prev.map((l) =>
-                l.id === payload.new.id ? { ...l, ...payload.new } : l
-              )
-            );
+            const updated = payload.new as PlainLead;
+            if (updated.deletedAt) {
+              // Soft delete - remove da lista
+              setLeads((prev) => prev.filter((l) => l.id !== updated.id));
+            } else {
+              setLeads((prev) =>
+                prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
+              );
+            }
           } else if (payload.eventType === "DELETE") {
             setLeads((prev) => prev.filter((l) => l.id !== payload.old.id));
           }

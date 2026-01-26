@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useRealtimeDebtors } from "@/hooks/use-realtime-debtors";
 import {
     Table,
     TableBody,
@@ -58,6 +59,20 @@ export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
     const [actionId, setActionId] = useState<string | null>(null);
     const [actionType, setActionType] = useState<"delete" | "pay" | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [localDebtors, setLocalDebtors] = useState(debtors);
+
+    // Sync props com estado local (quando props mudam)
+    useEffect(() => {
+        setLocalDebtors(debtors);
+    }, [debtors]);
+
+    // Função de refresh para realtime
+    const refreshDebtors = useCallback(() => {
+        router.refresh();
+    }, [router]);
+
+    // Hook de realtime
+    useRealtimeDebtors(refreshDebtors);
 
     const handleAction = async () => {
         if (!actionId || !actionType) return;
@@ -95,7 +110,7 @@ export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
     };
 
     // Calcular totais
-    const totalPending = debtors
+    const totalPending = localDebtors
         .filter(d => d.status === "PENDENTE")
         .reduce((sum, d) => sum + d.amountRemaining, 0);
 
@@ -116,7 +131,7 @@ export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-3">
-                {debtors.map(debtor => (
+                {localDebtors.map(debtor => (
                     <Card key={debtor.id} className="bg-brand-card/50 border-white/[0.08]">
                         <CardContent className="p-4 space-y-3">
                             <div className="flex justify-between items-start">
@@ -190,14 +205,14 @@ export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {debtors.length === 0 ? (
+                        {localDebtors.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                     Nenhum registro encontrado.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            debtors.map((debtor) => (
+                            localDebtors.map((debtor) => (
                                 <TableRow key={debtor.id} className="border-white/[0.04] hover:bg-white/[0.02]">
                                     <TableCell>
                                         <div>

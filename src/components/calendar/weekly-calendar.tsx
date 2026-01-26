@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useRealtimeAppointments } from "@/hooks/use-realtime-appointments";
 
 interface WeekAppointment {
   id: string;
@@ -61,6 +62,9 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
   useEffect(() => {
     loadAppointments();
   }, [loadAppointments]);
+
+  // Realtime sync - atualiza quando houver mudanças em appointments
+  useRealtimeAppointments(loadAppointments);
 
   // Navegação de semana
   const goToPreviousWeek = () => {
