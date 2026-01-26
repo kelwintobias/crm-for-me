@@ -425,7 +425,7 @@ function CreateUserForm({
             {role === "VENDEDOR" && (
                 <div className="space-y-2">
                     <Label className="text-text-secondary">Abas Permitidas</Label>
-                    <div className="space-y-2">
+                    <div className="space-y-1 max-h-48 overflow-y-auto pr-2 border border-white/10 rounded-lg p-2">
                         {AVAILABLE_TABS.map((tab) => (
                             <div key={tab.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5">
                                 <Checkbox
@@ -439,11 +439,11 @@ function CreateUserForm({
                                         }
                                     }}
                                 />
-                                <div>
-                                    <Label htmlFor={`create-${tab.id}`} className="text-text-primary cursor-pointer">
+                                <div className="flex-1 min-w-0">
+                                    <Label htmlFor={`create-${tab.id}`} className="text-text-primary cursor-pointer text-sm">
                                         {tab.label}
                                     </Label>
-                                    <p className="text-xs text-text-tertiary">{tab.description}</p>
+                                    <p className="text-xs text-text-tertiary truncate">{tab.description}</p>
                                 </div>
                             </div>
                         ))}
@@ -479,7 +479,7 @@ function TabsPermissionForm({
 
     return (
         <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-1 max-h-64 overflow-y-auto pr-2 border border-white/10 rounded-lg p-2">
                 {AVAILABLE_TABS.map((tab) => (
                     <div key={tab.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5">
                         <Checkbox
@@ -493,11 +493,11 @@ function TabsPermissionForm({
                                 }
                             }}
                         />
-                        <div>
-                            <Label htmlFor={`edit-${tab.id}`} className="text-text-primary cursor-pointer">
+                        <div className="flex-1 min-w-0">
+                            <Label htmlFor={`edit-${tab.id}`} className="text-text-primary cursor-pointer text-sm">
                                 {tab.label}
                             </Label>
-                            <p className="text-xs text-text-tertiary">{tab.description}</p>
+                            <p className="text-xs text-text-tertiary truncate">{tab.description}</p>
                         </div>
                     </div>
                 ))}
