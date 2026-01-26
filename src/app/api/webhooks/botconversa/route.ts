@@ -7,6 +7,7 @@ import { LeadSource } from "@prisma/client";
 // Usa keywords ASCII que funcionam independente de encoding
 // Valores esperados do BotConversa:
 // - "Anúncio nas redes sociais da UPBOOST" → ANUNCIO
+// - "ANUNCIO NAS REDES SOCIAIS" → ANUNCIO
 // - "Indicação" → INDICACAO
 // - "Página Parceira" → PAGINA_PARCEIRA
 // - "Vídeo de influenciadores" → INFLUENCER
@@ -17,6 +18,7 @@ function mapSource(sourceText: string): LeadSource {
 
     // Match por keywords ASCII únicas (funciona com qualquer encoding)
     if (text.includes("upboost")) return "ANUNCIO";
+    if (text.includes("anuncio") || text.includes("redes sociais")) return "ANUNCIO";  // "Anúncio nas redes sociais"
     if (text.includes("indica")) return "INDICACAO";  // "Indicação" contém "indica"
     if (text.includes("parceira")) return "PAGINA_PARCEIRA";
     if (text.includes("influenc")) return "INFLUENCER";  // "influenciadores" contém "influenc"
