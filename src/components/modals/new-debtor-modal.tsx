@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -55,6 +56,7 @@ interface NewDebtorModalProps {
 }
 
 export function NewDebtorModal({ open, onOpenChange, people = [] }: NewDebtorModalProps) {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 
     // Search state
@@ -122,6 +124,7 @@ export function NewDebtorModal({ open, onOpenChange, people = [] }: NewDebtorMod
                 toast.success("Devedor registrado com sucesso");
                 form.reset();
                 onOpenChange(false);
+                router.refresh();
             } else {
                 toast.error(result.error || "Erro ao registrar");
             }
