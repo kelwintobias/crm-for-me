@@ -45,21 +45,28 @@ function getPlanValue(plan: PlanType): Decimal {
 // SCHEMAS DE VALIDACAO
 // ============================================
 
+// BUG-006 FIX: Incluir todos os valores do enum Prisma
+const LEAD_SOURCES = ["INSTAGRAM", "INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "GOOGLE", "OUTRO"] as const;
+const PLAN_TYPES = ["INDEFINIDO", "INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION", "PLANO_UNICO", "PLANO_MENSAL"] as const;
+
 const createLeadSchema = z.object({
   name: z.string().min(1, "Nome e obrigatorio"),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos"),
-  source: z.enum(["INSTAGRAM", "INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "OUTRO"]),
-  plan: z.enum(["INDEFINIDO", "INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"]).optional(),
+  source: z.enum(LEAD_SOURCES),
+  plan: z.enum(PLAN_TYPES).optional(),
   stage: z.enum(["NOVO_LEAD", "EM_NEGOCIACAO"]).optional(), // Apenas colunas iniciais permitidas
 });
+
+// BUG-006 FIX: Incluir PERDIDO no schema de update
+const PIPELINE_STAGES = ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "PERDIDO", "FINALIZADO"] as const;
 
 const updateLeadSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1, "Nome e obrigatorio").optional(),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 digitos").optional(),
-  source: z.enum(["INSTAGRAM", "INDICACAO", "PAGINA_PARCEIRA", "INFLUENCER", "ANUNCIO", "OUTRO"]).optional(),
-  plan: z.enum(["INDEFINIDO", "INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"]).optional(),
-  stage: z.enum(["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"]).optional(),
+  source: z.enum(LEAD_SOURCES).optional(),
+  plan: z.enum(PLAN_TYPES).optional(),
+  stage: z.enum(PIPELINE_STAGES).optional(),
   notes: z.string().nullable().optional(),
   // Campos do "Espelho da Planilha"
   email: z.string().email("Email invalido").nullable().optional().or(z.literal("")),

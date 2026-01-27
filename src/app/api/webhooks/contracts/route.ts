@@ -218,12 +218,34 @@ export async function POST(request: Request) {
         });
 
         // 5. Atualização de Lead (se existir)
+        // BUG-003 FIX: Busca primeiro por telefone exato, depois por variações comuns
         let leadUpdated = false;
-        const lead = await prisma.lead.findFirst({
+        let lead = await prisma.lead.findFirst({
             where: {
-                phone: { contains: normalizedPhone.slice(-8) }, // Busca pelos últimos 8 dígitos
+                phone: normalizedPhone, // Busca exata primeiro
             },
         });
+
+        // Se não encontrou, tenta variações comuns (com/sem código de país)
+        if (!lead && normalizedPhone.length >= 10) {
+            const phoneVariations = [
+                normalizedPhone,
+                // Se tem 13 dígitos (55 + DDD + número), tenta sem o 55
+                normalizedPhone.length === 13 && normalizedPhone.startsWith("55")
+                    ? normalizedPhone.slice(2)
+                    : null,
+                // Se tem 11 dígitos (DDD + número), tenta com 55
+                normalizedPhone.length === 11
+                    ? `55${normalizedPhone}`
+                    : null,
+            ].filter(Boolean) as string[];
+
+            lead = await prisma.lead.findFirst({
+                where: {
+                    phone: { in: phoneVariations },
+                },
+            });
+        }
 
         if (lead) {
             // Atualiza o lead com os dados do contrato, incluindo o plano

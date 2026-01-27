@@ -62,33 +62,36 @@ async function hasConflict(
 ): Promise<boolean> {
   const endTime = new Date(scheduledAt.getTime() + duration * 60000);
 
-  const conflicts = await prisma.appointment.findMany({
+  // Busca agendamentos que PODEM conflitar (janela de tempo relevante)
+  // Um agendamento existente conflita se:
+  // - Começa antes do novo terminar E termina depois do novo começar
+  const potentialConflicts = await prisma.appointment.findMany({
     where: {
       status: "SCHEDULED",
       id: excludeAppointmentId ? { not: excludeAppointmentId } : undefined,
-      OR: [
-        // Novo agendamento começa durante agendamento existente
-        {
-          scheduledAt: { lte: scheduledAt },
-        },
-        // Novo agendamento termina durante agendamento existente
-        {
-          scheduledAt: { gte: scheduledAt, lt: endTime },
-        }
-      ]
+      // Filtra apenas agendamentos no mesmo dia para otimização
+      scheduledAt: {
+        gte: new Date(scheduledAt.getTime() - 24 * 60 * 60000), // 24h antes
+        lte: new Date(endTime.getTime() + 24 * 60 * 60000), // 24h depois
+      },
+    },
+    select: {
+      scheduledAt: true,
+      duration: true,
     },
   });
 
   // Verifica sobreposição real considerando a duração
-  for (const conflict of conflicts) {
-    const conflictEnd = new Date(
-      conflict.scheduledAt.getTime() + conflict.duration * 60000
+  for (const existing of potentialConflicts) {
+    const existingEnd = new Date(
+      existing.scheduledAt.getTime() + existing.duration * 60000
     );
 
-    // Há conflito se:
-    // - Novo agendamento começa antes do existente terminar E
-    // - Novo agendamento termina depois do existente começar
-    if (scheduledAt < conflictEnd && endTime > conflict.scheduledAt) {
+    // Há conflito se os intervalos se sobrepõem:
+    // [scheduledAt, endTime) ∩ [existing.scheduledAt, existingEnd) ≠ ∅
+    const hasOverlap = scheduledAt < existingEnd && endTime > existing.scheduledAt;
+
+    if (hasOverlap) {
       return true;
     }
   }
@@ -130,6 +133,21 @@ export async function createAppointment(data: unknown) {
 
     if (!lead) {
       return { success: false, error: "Lead não encontrado" };
+    }
+
+    // BUG-002 FIX: Verifica se o lead já possui um agendamento ativo
+    const existingAppointment = await prisma.appointment.findFirst({
+      where: {
+        leadId: validated.leadId,
+        status: "SCHEDULED",
+      },
+    });
+
+    if (existingAppointment) {
+      return {
+        success: false,
+        error: "Este lead já possui um agendamento ativo. Cancele ou conclua o agendamento existente primeiro."
+      };
     }
 
     // Cria agendamento e atualiza stage do lead em uma transação
@@ -309,11 +327,15 @@ export async function cancelAppointment(data: unknown) {
         },
       });
 
-      // Voltar lead para EM_NEGOCIACAO
-      await tx.lead.update({
-        where: { id: existing.leadId },
-        data: { stage: "EM_NEGOCIACAO" },
-      });
+      // BUG-009 FIX: Só volta para EM_NEGOCIACAO se o lead estava em AGENDADO
+      // Se estava em stage mais avançado, mantém o progresso
+      const advancedStages = ["EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"];
+      if (!advancedStages.includes(existing.lead.stage)) {
+        await tx.lead.update({
+          where: { id: existing.leadId },
+          data: { stage: "EM_NEGOCIACAO" },
+        });
+      }
     });
 
     revalidatePath("/");

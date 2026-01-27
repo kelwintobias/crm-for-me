@@ -68,12 +68,15 @@ export async function getDashboardMetrics() {
         },
       }),
 
-      // 2. KPI: MRR - Monthly Recurring Revenue (agora conta todos os leads vendidos)
-      prisma.lead.aggregate({
-        _sum: { value: true },
+      // 2. KPI: MRR - Monthly Recurring Revenue (receita do mês atual baseada em CONTRATOS)
+      // BUG-004 FIX: MRR deve ser a receita do mês corrente, não o total histórico
+      prisma.contract.aggregate({
+        _sum: { totalValue: true },
         where: {
-          stage: { in: ["POS_VENDA", "FINALIZADO"] },
-          deletedAt: null,
+          contractDate: {
+            gte: startOfMonth(now),
+            lte: endOfMonth(now),
+          },
         },
       }),
 
@@ -128,13 +131,12 @@ export async function getDashboardMetrics() {
         },
       }),
 
-      // 8. KPI Anterior: MRR do mes passado (agora conta todos os leads vendidos)
-      prisma.lead.aggregate({
-        _sum: { value: true },
+      // 8. KPI Anterior: MRR do mes passado (baseado em CONTRATOS)
+      // BUG-004 FIX: MRR anterior também baseado em contratos
+      prisma.contract.aggregate({
+        _sum: { totalValue: true },
         where: {
-          stage: { in: ["POS_VENDA", "FINALIZADO"] },
-          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
-          deletedAt: null,
+          contractDate: { gte: lastMonthStart, lte: lastMonthEnd },
         },
       }),
 
@@ -352,7 +354,8 @@ export async function getDashboardMetrics() {
     }));
 
     // Formata dados do funil
-    const STAGE_ORDER = ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"];
+    // BUG-008 FIX: Incluir PERDIDO no funil
+    const STAGE_ORDER = ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO", "PERDIDO"];
     const STAGE_LABELS: Record<string, string> = {
       NOVO_LEAD: "Novo Lead",
       EM_NEGOCIACAO: "Em Negociacao",
@@ -360,6 +363,7 @@ export async function getDashboardMetrics() {
       EM_ATENDIMENTO: "Em Atendimento",
       POS_VENDA: "Pos-Venda",
       FINALIZADO: "Finalizado",
+      PERDIDO: "Perdido",
     };
 
     const funnelData = STAGE_ORDER.map((stage) => {
@@ -432,8 +436,8 @@ export async function getDashboardMetrics() {
         kpis: {
           totalRevenue: Number(totalRevenueResult._sum?.value || 0),
           totalRevenuePrev: Number(prevTotalRevenueResult._sum?.value || 0),
-          mrr: Number(mrrResult._sum?.value || 0),
-          mrrPrev: Number(prevMrrResult._sum?.value || 0),
+          mrr: Number(mrrResult._sum?.totalValue || 0),
+          mrrPrev: Number(prevMrrResult._sum?.totalValue || 0),
           pipeline: Number(pipelineResult._sum?.value || 0),
           pipelinePrev: Number(prevPipelineResult._sum?.value || 0),
           averageTicket: Number(averageTicketResult._avg?.value || 0),
