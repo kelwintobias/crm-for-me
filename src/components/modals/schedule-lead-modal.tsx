@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useDataRefresh } from "@/hooks/use-data-refresh";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +29,7 @@ interface ScheduleLeadModalProps {
 }
 
 export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps) {
-  const router = useRouter();
+  const { refreshAppointments } = useDataRefresh();
 
   // Estado de busca de leads
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,7 +156,7 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
           )}`,
         });
 
-        router.refresh();
+        refreshAppointments();
         onOpenChange(false);
       } else {
         toast.error(result.error || "Erro ao criar agendamento");

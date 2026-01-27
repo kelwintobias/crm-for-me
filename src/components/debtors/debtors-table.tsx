@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useDataRefresh, useDataUpdateListener } from "@/hooks/use-data-refresh";
 import { useRealtimeDebtors } from "@/hooks/use-realtime-debtors";
 import {
     Table,
@@ -55,7 +55,7 @@ interface DebtorsTableProps {
 }
 
 export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
-    const router = useRouter();
+    const { refreshDebtors } = useDataRefresh();
     const [actionId, setActionId] = useState<string | null>(null);
     const [actionType, setActionType] = useState<"delete" | "pay" | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -66,13 +66,13 @@ export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
         setLocalDebtors(debtors);
     }, [debtors]);
 
-    // Função de refresh para realtime
-    const refreshDebtors = useCallback(() => {
-        router.refresh();
-    }, [router]);
-
     // Hook de realtime
     useRealtimeDebtors(refreshDebtors);
+
+    // Escuta eventos de atualização manual
+    useDataUpdateListener("DEBTORS_UPDATED", useCallback(() => {
+        setLocalDebtors(debtors);
+    }, [debtors]));
 
     const handleAction = async () => {
         if (!actionId || !actionType) return;
@@ -90,7 +90,7 @@ export function DebtorsTable({ debtors, onNewDebtor }: DebtorsTableProps) {
 
         if (result.success) {
             toast.success(actionType === "delete" ? "Removido com sucesso" : "Marcado como pago!");
-            router.refresh();
+            refreshDebtors();
         } else {
             toast.error(result.error || "Erro na operação");
         }

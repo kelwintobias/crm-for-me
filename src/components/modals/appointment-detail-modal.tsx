@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useDataRefresh } from "@/hooks/use-data-refresh";
 import {
   Dialog,
   DialogContent,
@@ -80,7 +80,7 @@ export function AppointmentDetailModal({
   onOpenChange,
   onUpdate,
 }: AppointmentDetailModalProps) {
-  const router = useRouter();
+  const { refreshAppointments } = useDataRefresh();
 
   const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -183,7 +183,7 @@ export function AppointmentDetailModal({
 
       if (result.success) {
         toast.success("Agendamento remarcado com sucesso!");
-        router.refresh();
+        refreshAppointments();
         onUpdate?.();
         onOpenChange(false);
       } else {
@@ -207,7 +207,7 @@ export function AppointmentDetailModal({
 
       if (result.success) {
         toast.success("Agendamento cancelado");
-        router.refresh();
+        refreshAppointments();
         onUpdate?.();
         onOpenChange(false);
       } else {

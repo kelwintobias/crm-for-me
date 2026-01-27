@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useDataRefresh, useDataUpdateListener } from "@/hooks/use-data-refresh";
 import { useRealtimeContracts } from "@/hooks/use-realtime-contracts";
 import {
     Table,
@@ -87,7 +87,7 @@ interface ContractsTableProps {
 }
 
 export function ContractsTable({ contracts, onNewContract }: ContractsTableProps) {
-    const router = useRouter();
+    const { refreshContracts } = useDataRefresh();
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
@@ -101,13 +101,13 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
         setLocalContracts(contracts);
     }, [contracts]);
 
-    // Função de refresh para realtime
-    const refreshContracts = useCallback(() => {
-        router.refresh();
-    }, [router]);
-
     // Hook de realtime
     useRealtimeContracts(refreshContracts);
+
+    // Escuta eventos de atualização manual
+    useDataUpdateListener("CONTRACTS_UPDATED", useCallback(() => {
+        setLocalContracts(contracts);
+    }, [contracts]));
 
     const toggleMonth = (monthYear: string) => {
         setExpandedMonths(prev => {
@@ -158,7 +158,7 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
 
         if (result.success) {
             toast.success("Contrato excluído com sucesso");
-            router.refresh();
+            refreshContracts();
         } else {
             toast.error(result.error || "Erro ao excluir contrato");
         }

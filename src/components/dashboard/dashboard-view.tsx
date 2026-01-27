@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useReducer } from "react";
-import { useRouter } from "next/navigation";
+import { useDataRefresh } from "@/hooks/use-data-refresh";
 import dynamic from "next/dynamic";
 import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -265,7 +265,7 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
 }
 
 export function DashboardView({ user, leads, contracts, fixedCosts, appointments, dashboardData: _dashboardData, contractMetrics, pessoasData, debtors }: DashboardViewProps) {
-  const router = useRouter();
+  const { refreshLeads, refreshAppointments, refreshAll } = useDataRefresh();
 
   // PERF: Estado consolidado de modais usando reducer
   const [modals, dispatch] = useReducer(modalReducer, modalInitialState);
@@ -413,15 +413,14 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
 
   const handleUpdateLead = useCallback((_updatedLead: PlainLead) => {
     setSelectedLead(null);
-    // Usa router.refresh() que é muito mais eficiente que window.location.reload()
-    // Atualiza apenas os dados do servidor sem recarregar a página inteira
-    router.refresh();
-  }, [router]);
+    // Usa refreshLeads para atualizar dados em todos os componentes
+    refreshLeads();
+  }, [refreshLeads, setSelectedLead]);
 
   const handleDeleteLead = useCallback(() => {
     setSelectedLead(null);
-    router.refresh();
-  }, [router]);
+    refreshLeads();
+  }, [refreshLeads, setSelectedLead]);
 
   const STAGE_LABELS_MAP: Record<string, string> = {
     NOVO_LEAD: "Novo Lead",
@@ -486,7 +485,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
         appointmentId={selectedAppointmentId}
         open={selectedAppointmentId !== null}
         onOpenChange={(open) => !open && setSelectedAppointmentId(null)}
-        onUpdate={() => router.refresh()}
+        onUpdate={() => refreshAppointments()}
       />
       <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useDataRefresh } from "@/hooks/use-data-refresh";
 import {
     Dialog,
     DialogContent,
@@ -75,7 +75,7 @@ interface NewContractModalProps {
 }
 
 export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractModalProps) {
-    const router = useRouter();
+    const { refreshContracts } = useDataRefresh();
     const [loading, setLoading] = useState(false);
 
     // Form state
@@ -156,7 +156,7 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
             if (onSuccess) {
                 onSuccess();
             } else {
-                router.refresh();
+                refreshContracts();
             }
         } else {
             toast.error(result.error || "Erro ao criar contrato");

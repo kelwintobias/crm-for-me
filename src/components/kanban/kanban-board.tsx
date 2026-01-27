@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import type { PipelineStage } from "@prisma/client";
 import { KanbanColumn } from "./kanban-column";
 import { LeadCard } from "./lead-card";
@@ -13,6 +12,7 @@ import { PlainLead } from "@/types";
 import { Users, Sparkles } from "lucide-react";
 import { LostLeadReasonModal } from "../modals/lost-lead-reason-modal";
 import { useRealtimeLeads } from "@/hooks/use-realtime-leads";
+import { useDataRefresh, useDataUpdateListener } from "@/hooks/use-data-refresh";
 
 const STAGES: PipelineStage[] = [
   "NOVO_LEAD",
@@ -41,20 +41,20 @@ interface DragState {
 }
 
 export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
-  const router = useRouter();
+  const { refreshLeads } = useDataRefresh();
   const [leads, setLeads] = useState<PlainLead[]>(initialLeads);
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
   const [pendingLostLead, setPendingLostLead] = useState<{ lead: PlainLead, targetStage: PipelineStage } | null>(null);
 
-  // Callback para refresh (usado no fallback de polling)
-  const refreshLeads = useCallback(() => {
-    router.refresh();
-  }, [router]);
-
   // Realtime subscription com fallback de polling
   useRealtimeLeads(setLeads, refreshLeads);
+
+  // Escuta eventos de atualização manual (quando outros componentes fazem mutations)
+  useDataUpdateListener("LEADS_UPDATED", useCallback(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]));
 
   // PERF: Estado de drag em ref - ZERO re-renders durante arraste
   const dragRef = useRef<DragState>({
