@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import type { PipelineStage } from "@prisma/client";
 import { KanbanColumn } from "./kanban-column";
 import { LeadCard } from "./lead-card";
@@ -40,14 +41,20 @@ interface DragState {
 }
 
 export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
+  const router = useRouter();
   const [leads, setLeads] = useState<PlainLead[]>(initialLeads);
   const [selectedLead, setSelectedLead] = useState<PlainLead | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
   const [pendingLostLead, setPendingLostLead] = useState<{ lead: PlainLead, targetStage: PipelineStage } | null>(null);
 
-  // Realtime subscription
-  useRealtimeLeads(setLeads);
+  // Callback para refresh (usado no fallback de polling)
+  const refreshLeads = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  // Realtime subscription com fallback de polling
+  useRealtimeLeads(setLeads, refreshLeads);
 
   // PERF: Estado de drag em ref - ZERO re-renders durante arraste
   const dragRef = useRef<DragState>({

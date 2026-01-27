@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 // Webhook para novos contatos do BotConversa
@@ -152,6 +153,9 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`[WEBHOOK NOVO-CONTATO] Lead criado: ${lead.id} (${lead.name}) - NOVO_LEAD`);
+
+        // Revalidar cache para atualizar a UI
+        revalidatePath("/");
 
         await prisma.webhookLog.create({
             data: {

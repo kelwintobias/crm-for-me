@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createLeadService } from "@/app/actions/leads";
 import { prisma } from "@/lib/prisma";
 import { LeadSource } from "@prisma/client";
@@ -176,6 +177,9 @@ export async function POST(req: NextRequest) {
 
             console.log(`[WEBHOOK BOTCONVERSA] Lead movido para EM_NEGOCIACAO: ${updatedLead.id} (${updatedLead.name})`);
 
+            // Revalidar cache para atualizar a UI
+            revalidatePath("/");
+
             const actionDetails = {
                 action: "LEAD_MOVED",
                 leadId: updatedLead.id,
@@ -223,6 +227,9 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`[WEBHOOK BOTCONVERSA] Lead criado com sucesso: ${lead.id} (${lead.name})`);
+
+        // Revalidar cache para atualizar a UI
+        revalidatePath("/");
 
         // Log Sucesso com detalhes da ação executada
         const actionDetails = {
