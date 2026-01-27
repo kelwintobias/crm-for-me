@@ -155,6 +155,7 @@ model Lead {
   @@index([stage])
   @@index([userId])
   @@index([createdAt])
+  @@index([phone])
   @@map("leads")
 }
 

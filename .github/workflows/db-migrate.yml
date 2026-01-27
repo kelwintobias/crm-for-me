@@ -1,0 +1,25 @@
+name: Run Database Migration
+on: 
+  workflow_dispatch: # Permite rodar manualmente pelo botão "Run workflow"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prisma DB Push
+        run: npx prisma db push
+        env:
+          # Segredos devem ser configurados no GitHub (Settings > Secrets and variables > Actions)
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
