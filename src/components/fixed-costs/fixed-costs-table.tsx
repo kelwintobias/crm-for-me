@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useDataRefresh, useDataUpdateListener } from "@/hooks/use-data-refresh";
+import { useRouter } from "next/navigation";
 import { useRealtimeFixedCosts } from "@/hooks/use-realtime-fixed-costs";
 import {
     Table,
@@ -44,7 +44,7 @@ interface FixedCostsTableProps {
 }
 
 export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
-    const { refreshFixedCosts } = useDataRefresh();
+    const router = useRouter();
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
@@ -60,13 +60,13 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
         setLocalCosts(costs);
     }, [costs]);
 
-    // Hook de realtime
-    useRealtimeFixedCosts(refreshFixedCosts);
+    // Função de refresh para realtime
+    const refreshCosts = useCallback(() => {
+        router.refresh();
+    }, [router]);
 
-    // Escuta eventos de atualização manual
-    useDataUpdateListener("FIXED_COSTS_UPDATED", useCallback(() => {
-        setLocalCosts(costs);
-    }, [costs]));
+    // Hook de realtime
+    useRealtimeFixedCosts(refreshCosts);
 
     const toggleMonth = (monthYear: string) => {
         setExpandedMonths(prev => {
@@ -117,7 +117,7 @@ export function FixedCostsTable({ costs, onNewCost }: FixedCostsTableProps) {
 
         if (result.success) {
             toast.success("Custo fixo excluído com sucesso");
-            refreshFixedCosts();
+            refreshCosts();
         } else {
             toast.error(result.error || "Erro ao excluir custo fixo");
         }

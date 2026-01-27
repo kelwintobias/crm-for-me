@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useDataRefresh, useDataUpdateListener } from "@/hooks/use-data-refresh";
+import { useRouter } from "next/navigation";
 import { useRealtimeContracts } from "@/hooks/use-realtime-contracts";
 import {
     Table,
@@ -87,7 +87,7 @@ interface ContractsTableProps {
 }
 
 export function ContractsTable({ contracts, onNewContract }: ContractsTableProps) {
-    const { refreshContracts } = useDataRefresh();
+    const router = useRouter();
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
@@ -101,13 +101,13 @@ export function ContractsTable({ contracts, onNewContract }: ContractsTableProps
         setLocalContracts(contracts);
     }, [contracts]);
 
+    // Função de refresh para realtime
+    const refreshContracts = useCallback(() => {
+        router.refresh();
+    }, [router]);
+
     // Hook de realtime
     useRealtimeContracts(refreshContracts);
-
-    // Escuta eventos de atualização manual
-    useDataUpdateListener("CONTRACTS_UPDATED", useCallback(() => {
-        setLocalContracts(contracts);
-    }, [contracts]));
 
     const toggleMonth = (monthYear: string) => {
         setExpandedMonths(prev => {

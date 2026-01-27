@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo, useReducer } from "react";
-import { useDataRefresh } from "@/hooks/use-data-refresh";
+import { useState, useCallback, useMemo, useReducer, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -265,7 +265,8 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
 }
 
 export function DashboardView({ user, leads, contracts, fixedCosts, appointments, dashboardData: _dashboardData, contractMetrics, pessoasData, debtors }: DashboardViewProps) {
-  const { refreshLeads, refreshAppointments, refreshAll } = useDataRefresh();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // PERF: Estado consolidado de modais usando reducer
   const [modals, dispatch] = useReducer(modalReducer, modalInitialState);
@@ -297,7 +298,31 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   }, []);
 
   // PERF FIX: Estado controlado da aba para desmontagem seletiva de componentes
-  const [activeTab, setActiveTab] = useState<string>("kanban");
+  // Lê a aba inicial da URL (query param ?tab=xxx)
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTabState] = useState<string>(tabFromUrl || "kanban");
+
+  // Função para mudar de aba e atualizar a URL
+  const setActiveTab = useCallback((tab: string) => {
+    setActiveTabState(tab);
+    // Atualiza a URL sem recarregar a página
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.pushState({}, "", url.toString());
+  }, []);
+
+  // Sincroniza o estado com a URL quando o usuário navega (back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab) {
+        setActiveTabState(tab);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Estado para filtro de meses (Visao Geral e Dashboards)
   const [selectedMonthsOverview, setSelectedMonthsOverview] = useState<string[]>([]);
@@ -413,14 +438,13 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
 
   const handleUpdateLead = useCallback((_updatedLead: PlainLead) => {
     setSelectedLead(null);
-    // Usa refreshLeads para atualizar dados em todos os componentes
-    refreshLeads();
-  }, [refreshLeads, setSelectedLead]);
+    router.refresh();
+  }, [router, setSelectedLead]);
 
   const handleDeleteLead = useCallback(() => {
     setSelectedLead(null);
-    refreshLeads();
-  }, [refreshLeads, setSelectedLead]);
+    router.refresh();
+  }, [router, setSelectedLead]);
 
   const STAGE_LABELS_MAP: Record<string, string> = {
     NOVO_LEAD: "Novo Lead",
@@ -485,7 +509,7 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
         appointmentId={selectedAppointmentId}
         open={selectedAppointmentId !== null}
         onOpenChange={(open) => !open && setSelectedAppointmentId(null)}
-        onUpdate={() => refreshAppointments()}
+        onUpdate={() => router.refresh()}
       />
       <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">

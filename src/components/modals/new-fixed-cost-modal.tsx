@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useDataRefresh } from "@/hooks/use-data-refresh";
+import { useRouter } from "next/navigation";
 import {
     Dialog,
     DialogContent,
@@ -50,7 +50,7 @@ const CATEGORIES = [
 ];
 
 export function NewFixedCostModal({ open, onOpenChange }: NewFixedCostModalProps) {
-    const { refreshFixedCosts } = useDataRefresh();
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         date: format(new Date(), "yyyy-MM-dd"),
@@ -84,7 +84,7 @@ export function NewFixedCostModal({ open, onOpenChange }: NewFixedCostModalProps
             if (result.success) {
                 toast.success("Custo fixo adicionado com sucesso!");
                 onOpenChange(false);
-                refreshFixedCosts();
+                router.refresh();
                 // Reset form
                 setFormData({
                     date: format(new Date(), "yyyy-MM-dd"),

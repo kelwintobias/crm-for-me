@@ -49,9 +49,8 @@ async function getCurrentUser() {
 // Verifica se horário é válido (permite qualquer horário e dia)
 function isWithinBusinessHours(date: Date): boolean {
   // Permite agendamento em qualquer horário e dia da semana
-  // Apenas verifica se a data não está no passado
-  const now = new Date();
-  return date >= now;
+  // Permite datas no passado (conforme solicitado)
+  return true;
 }
 
 // Verifica conflitos de horário

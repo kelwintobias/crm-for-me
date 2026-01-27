@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useDataRefresh } from "@/hooks/use-data-refresh";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +40,7 @@ interface NewLeadModalProps {
 }
 
 export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProps) {
-  const { refreshLeads } = useDataRefresh();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<LeadSource>("INSTAGRAM");
   const [stage, setStage] = useState<PipelineStage>("NOVO_LEAD");
@@ -78,8 +78,7 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
       if (onSuccess) {
         onSuccess();
       } else {
-        // Usa refreshLeads para atualizar dados em todos os componentes
-        refreshLeads();
+        router.refresh();
       }
     } else {
       toast.error(result.error || "Erro ao criar lead");
