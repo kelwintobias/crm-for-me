@@ -212,3 +212,11 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+
+export async function GET(req: NextRequest) {
+    return NextResponse.json({ status: "online", message: "Evolution API Webhook is active" });
+}
+
+export async function OPTIONS(req: NextRequest) {
+    return NextResponse.json({}, { status: 200, headers: { "Allow": "POST, GET, OPTIONS" } });
+}
