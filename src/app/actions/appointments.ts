@@ -352,19 +352,25 @@ export async function getAvailableSlots(date: string) {
     // Nota: Auth é validada pelo middleware antes da página carregar
     // Dados são compartilhados entre todos os usuários
 
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
+    // Offset do Brasil (UTC-3)
+    const BRT_OFFSET = 3;
 
-    const nextDay = new Date(targetDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    // Configurar o range do dia em UTC
+    // Dia começa às 00:00 BRT = 03:00 UTC
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(BRT_OFFSET, 0, 0, 0);
 
-    // Busca todos os agendamentos do dia
+    // Dia termina às 23:59 BRT = 02:59 UTC do dia seguinte
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    // Busca todos os agendamentos que caem neste "dia brasileiro"
     const appointments = await prisma.appointment.findMany({
       where: {
         status: "SCHEDULED",
         scheduledAt: {
-          gte: targetDate,
-          lt: nextDay,
+          gte: startOfDay,
+          lt: endOfDay,
         },
       },
       select: {
@@ -373,7 +379,7 @@ export async function getAvailableSlots(date: string) {
       },
     });
 
-    // Gera slots de 30 em 30 minutos das 6h às 22h (horário flexível)
+    // Gera slots de 30 em 30 minutos das 6h às 22h (horário de Brasília)
     const slots: Array<{
       time: string;
       available: boolean;
@@ -382,8 +388,11 @@ export async function getAvailableSlots(date: string) {
 
     for (let hour = 6; hour < 23; hour++) {
       for (const minute of [0, 30]) {
-        const slotTime = new Date(targetDate);
-        slotTime.setHours(hour, minute, 0, 0);
+        // Criar data baseada no input string (YYYY-MM-DD -> 00:00 UTC)
+        // Ajustar para o horário BRT desejado convertendo para UTC corretamente
+        // Ex: 10:00 BRT -> 10 + 3 = 13:00 UTC
+        const slotTime = new Date(date);
+        slotTime.setUTCHours(hour + BRT_OFFSET, minute, 0, 0);
 
         // Verifica se há conflito (considerando 1 hora de duração)
         const slotEnd = new Date(slotTime.getTime() + 60 * 60000);
