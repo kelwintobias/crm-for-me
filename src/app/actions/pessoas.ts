@@ -49,7 +49,7 @@ export interface PessoaData {
 // FUNÇÃO PRINCIPAL - BASEADA EM CONTRATOS
 // ============================================
 
-export async function getPessoasData(): Promise<PessoaData[]> {
+export async function getPessoasData() {
     try {
         // Buscar todos os contratos, ordenados por data (mais recente primeiro)
         const contracts = await prisma.contract.findMany({
@@ -98,7 +98,7 @@ export async function getPessoasData(): Promise<PessoaData[]> {
 
             // OTIMIZAÇÃO: O(1) lookup em vez de O(n) find()
             const linkedLead = leadsByPhone.get(normalizedPhone) ||
-                              (normalizedCpf ? leadsByCpf.get(normalizedCpf) : undefined);
+                (normalizedCpf ? leadsByCpf.get(normalizedCpf) : undefined);
 
             // Calcular LTV
             const ltv = customerContracts.reduce(
@@ -197,10 +197,10 @@ export async function getPessoasData(): Promise<PessoaData[]> {
             return dateB - dateA;
         });
 
-        return pessoasData;
+        return { success: true, data: pessoasData };
     } catch (error) {
         console.error("Erro ao buscar dados de pessoas:", error);
-        throw new Error("Erro ao buscar dados de pessoas");
+        return { success: false, error: "Erro ao buscar dados de pessoas" };
     }
 }
 

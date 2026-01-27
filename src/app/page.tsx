@@ -41,7 +41,7 @@ export default async function HomePage() {
   }
 
   // Busca paralela de dados para performance
-  const [leadsResult, dashboardResult, contractsResult, fixedCostsResult, contractMetricsResult, appointmentsResult, pessoasData, debtorsResult] = await Promise.all([
+  const [leadsResult, dashboardResult, contractsResult, fixedCostsResult, contractMetricsResult, appointmentsResult, pessoasResult, debtorsResult] = await Promise.all([
     getLeads(),
     getDashboardMetrics(),
     getContracts(),
@@ -54,6 +54,7 @@ export default async function HomePage() {
 
   const rawLeads = leadsResult.data || [];
   const appointments = appointmentsResult.data || [];
+  const pessoasData = pessoasResult.data || [];
 
   const contracts = contractsResult.data || [];
 

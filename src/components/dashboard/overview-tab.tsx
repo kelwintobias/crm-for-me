@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MonthSelector } from "./month-selector";
@@ -99,7 +99,7 @@ export function OverviewTab({
             EM_ATENDIMENTO: "Em Atendimento", POS_VENDA: "Pos-Venda", FINALIZADO: "Finalizado",
         };
 
-        // KPIs Financeiros (Baseado em contratos filtrados - mesmo para Seller)
+        // KPI Calculations... [Preserving existing KPI logic]
         const totalRevenue = filteredContracts.reduce((sum, c) => sum + c.totalValue, 0);
         const totalContractsCount = filteredContracts.length;
         const averageTicket = totalContractsCount > 0 ? totalRevenue / totalContractsCount : 0;
@@ -125,15 +125,15 @@ export function OverviewTab({
             revenue: stats.revenue,
         })).sort((a, b) => b.revenue - a.revenue);
 
-        // Evolucao - ordenado cronologicamente
+        // Evolucao
         const monthlyMap = new Map<string, { sortKey: string; name: string; unico: number; mensal: number; total: number }>();
         const basicPlans = ["INTERMEDIARIO", "AVANCADO"];
         const premiumPlans = ["ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"];
 
         filteredContracts.forEach(c => {
             const date = new Date(c.contractDate);
-            const sortKey = format(date, "yyyy-MM"); // Para ordenação cronológica
-            const monthName = format(date, "MMM/yy", { locale: ptBR }).toUpperCase(); // Ex: MAI/25, JAN/26
+            const sortKey = format(date, "yyyy-MM");
+            const monthName = format(date, "MMM/yy", { locale: ptBR }).toUpperCase();
             const current = monthlyMap.get(sortKey) || { sortKey, name: monthName, unico: 0, mensal: 0, total: 0 };
             if (basicPlans.includes(c.package)) current.unico += c.totalValue;
             else if (premiumPlans.includes(c.package)) current.mensal += c.totalValue;
@@ -141,7 +141,6 @@ export function OverviewTab({
             monthlyMap.set(sortKey, current);
         });
 
-        // Ordena cronologicamente pela sortKey
         const revenueEvolution = Array.from(monthlyMap.values())
             .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
             .map(({ name, unico, mensal, total }) => ({ name, unico, mensal, total }));
@@ -171,14 +170,12 @@ export function OverviewTab({
 
         // Metrics
         const totalLeads = filteredLeads.length;
-        // Conversão = leads que avançaram de EM_NEGOCIACAO para AGENDADO ou além
         const convertedLeads = filteredLeads.filter(l =>
             ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"].includes(l.stage)
         ).length;
-        // Taxa de conversão baseada em leads que chegaram em AGENDADO+
         const taxaConversao = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
         const leadsEmContato = filteredLeads.filter(l => l.stage === "EM_NEGOCIACAO").length;
-        const leadsAguardando = filteredLeads.filter(l => l.stage === "EM_NEGOCIACAO").length; // Duplicate? kept as is from original
+        const leadsAguardando = filteredLeads.filter(l => l.stage === "EM_NEGOCIACAO").length;
 
         // Appointments
         const STATUS_LABELS: Record<string, string> = { SCHEDULED: "Agendado", COMPLETED: "Concluido", CANCELED: "Cancelado", NO_SHOW: "No-Show" };
@@ -212,29 +209,8 @@ export function OverviewTab({
         const taxaCancelamento = totalApts > 0 ? Math.round((canceledApts / totalApts) * 100) : 0;
         const taxaNoShow = totalApts > 0 ? Math.round((noShowApts / totalApts) * 100) : 0;
 
-        // Daily
-        const todayStr = new Date().toISOString().split("T")[0];
-        const aptsToday = filteredAppointments.filter(apt => apt.scheduledAt.split("T")[0] === todayStr);
-
-        // Leads atendidos hoje (baseado em updatedAt)
-        const leadsAtendidosHoje = relevantLeads.filter(lead => {
-            const updatedDate = typeof lead.updatedAt === "string" ? lead.updatedAt : lead.updatedAt.toISOString();
-            return updatedDate.split("T")[0] === todayStr;
-        }).length;
-
-        const dailyStats = {
-            completedToday: aptsToday.filter(a => a.status === "COMPLETED").length,
-            scheduledToday: aptsToday.filter(a => a.status === "SCHEDULED").length,
-            canceledToday: aptsToday.filter(a => a.status === "CANCELED").length,
-            noShowToday: aptsToday.filter(a => a.status === "NO_SHOW").length,
-            leadsAtendidosHoje, // Leads com updatedAt hoje
-        };
-
-        // "Leads Worked" for Seller (Calculated as leads updated within the period?)
-        // This is approximate as we use 'updatedAt' of the lead.
+        // Leads Worked
         const leadsWorked = filteredLeads.filter(l => {
-            // If we want leads updated in selected months.
-            // Lead.updatedAt field.
             return isDateInSelectedMonths(l.updatedAt);
         }).length;
 
@@ -250,11 +226,44 @@ export function OverviewTab({
                 totalLeads, vendidos: convertedLeads, taxaConversao,
                 leadsEmContato, leadsPerdidos: 0, leadsAguardando,
                 taxaConclusao, taxaCancelamento, taxaNoShow,
-                leadsWorked // Add this custom metric
+                leadsWorked
             },
-            dailyStats
+            appointments: filteredAppointments, // Passar raw para o useEffect
+            relevantLeads: relevantLeads // Passar raw para o useEffect
         };
-    }, [filteredLeads, filteredAppointments, filteredContracts, selectedMonths]);
+    }, [filteredLeads, filteredAppointments, filteredContracts, selectedMonths, relevantLeads]);
+
+    // Calcular estatísticas diárias APENAS no cliente para evitar hydration mismatch
+    const [dailyStats, setDailyStats] = useState({
+        completedToday: 0,
+        scheduledToday: 0,
+        canceledToday: 0,
+        noShowToday: 0,
+        leadsAtendidosHoje: 0,
+    });
+
+    useEffect(() => {
+        const calculateDailyStats = () => {
+            // Importante: new Date() aqui roda no browser, pegando o horário local do usuário
+            const todayStr = new Date().toISOString().split("T")[0];
+            const aptsToday = metricsData.appointments.filter(apt => apt.scheduledAt.split("T")[0] === todayStr);
+
+            const leadsAtendidosHoje = metricsData.relevantLeads.filter(lead => {
+                const updatedDate = typeof lead.updatedAt === "string" ? lead.updatedAt : lead.updatedAt.toISOString();
+                return updatedDate.split("T")[0] === todayStr;
+            }).length;
+
+            setDailyStats({
+                completedToday: aptsToday.filter(a => a.status === "COMPLETED").length,
+                scheduledToday: aptsToday.filter(a => a.status === "SCHEDULED").length,
+                canceledToday: aptsToday.filter(a => a.status === "CANCELED").length,
+                noShowToday: aptsToday.filter(a => a.status === "NO_SHOW").length,
+                leadsAtendidosHoje,
+            });
+        };
+
+        calculateDailyStats();
+    }, [metricsData.appointments, metricsData.relevantLeads]);
 
     return (
         <div className="space-y-4">
@@ -290,7 +299,7 @@ export function OverviewTab({
             )}
 
             {/* Consolidado: Metricas do Dia */}
-            <DailyStatsCards data={metricsData.dailyStats} />
+            <DailyStatsCards data={dailyStats} />
 
             {/* Charts Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
