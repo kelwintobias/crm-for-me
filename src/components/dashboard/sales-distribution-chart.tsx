@@ -11,9 +11,14 @@ interface SalesDistributionChartProps {
   }>;
 }
 
-const COLORS = {
-  "Plano Unico": "#adfa1d",
-  "Plano Mensal": "#2563eb",
+const COLORS: Record<string, string> = {
+  "Intermediario": "#10B981", // Emerald 500
+  "Avancado": "#3B82F6",      // Blue 500
+  "Elite": "#8B5CF6",         // Violet 500
+  "Pro Plus": "#F59E0B",      // Amber 500
+  "Ultra Pro": "#EC4899",     // Pink 500
+  "Evolution": "#6366F1",     // Indigo 500
+  "Outro": "#94A3B8",         // Slate 400
 };
 
 export function SalesDistributionChart({ data }: SalesDistributionChartProps) {

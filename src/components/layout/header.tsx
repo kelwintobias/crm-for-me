@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, Search, Bell, Calendar } from "lucide-react";
+import { Plus, Search, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./user-menu";
+import { NotificationDropdown } from "./notification-dropdown";
 import Image from "next/image";
 
 interface HeaderProps {
@@ -68,16 +69,8 @@ export function Header({ user, onNewLead, onSearchClick, onScheduleClick }: Head
 
           {/* Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Notifications */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-text-secondary hover:text-text-primary hover:bg-white/[0.05]"
-            >
-              <Bell className="w-5 h-5" />
-              {/* Notification dot */}
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-brand-accent" />
-            </Button>
+            {/* Notifications - agora funcional */}
+            <NotificationDropdown />
 
             {/* Divider */}
             <div className="h-8 w-px bg-white/[0.08]" />

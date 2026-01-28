@@ -228,18 +228,6 @@ export function NewLeadModal({ open, onOpenChange, onSuccess }: NewLeadModalProp
                       Agendado
                     </span>
                   </SelectItem>
-                  <SelectItem value="EM_ATENDIMENTO" className="focus:bg-brand-accent/20">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-500" />
-                      Em Atendimento
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="POS_VENDA" className="focus:bg-brand-accent/20">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
-                      Pós-Venda
-                    </span>
-                  </SelectItem>
                   <SelectItem value="FINALIZADO" className="focus:bg-brand-accent/20">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />

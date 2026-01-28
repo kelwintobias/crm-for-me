@@ -326,10 +326,8 @@ export async function cancelAppointment(data: unknown) {
         },
       });
 
-      // BUG-009 FIX: Só volta para EM_NEGOCIACAO se o lead estava em AGENDADO
-      // Se estava em stage mais avançado, mantém o progresso
-      const advancedStages = ["EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"];
-      if (!advancedStages.includes(existing.lead.stage)) {
+      // Só volta para EM_NEGOCIACAO se o lead não está em FINALIZADO
+      if (existing.lead.stage !== "FINALIZADO") {
         await tx.lead.update({
           where: { id: existing.leadId },
           data: { stage: "EM_NEGOCIACAO" },
@@ -552,6 +550,45 @@ export async function getAllAppointments() {
       success: false,
       error: error instanceof Error ? error.message : "Erro ao buscar agendamentos"
     };
+  }
+}
+
+// Buscar agendamentos ativos por leadId (para exibir no card)
+export async function getScheduledAppointmentsByLeadIds(leadIds: string[]) {
+  try {
+    if (leadIds.length === 0) {
+      return { success: true, data: new Map<string, { scheduledAt: string; duration: number }>() };
+    }
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        leadId: { in: leadIds },
+        status: "SCHEDULED",
+      },
+      select: {
+        leadId: true,
+        scheduledAt: true,
+        duration: true,
+      },
+      orderBy: { scheduledAt: "asc" },
+    });
+
+    // Retorna Map para O(1) lookup
+    const appointmentMap = new Map<string, { scheduledAt: string; duration: number }>();
+    for (const apt of appointments) {
+      // Só guarda o primeiro (mais próximo) se já existir
+      if (!appointmentMap.has(apt.leadId)) {
+        appointmentMap.set(apt.leadId, {
+          scheduledAt: apt.scheduledAt.toISOString(),
+          duration: apt.duration,
+        });
+      }
+    }
+
+    return { success: true, data: appointmentMap };
+  } catch (error) {
+    console.error("Erro ao buscar agendamentos por lead:", error);
+    return { success: false, error: "Erro ao buscar agendamentos" };
   }
 }
 

@@ -2,11 +2,13 @@
 
 import { memo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, GripVertical } from "lucide-react";
+import { MessageCircle, GripVertical, Calendar, CalendarPlus } from "lucide-react";
 import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, PlainLead } from "@/types";
 import { ShoppingBag } from "lucide-react";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface LeadCardProps {
   lead: PlainLead;
@@ -14,13 +16,24 @@ interface LeadCardProps {
   isOverlay?: boolean;
   isDragging?: boolean;
   onDragStart: (lead: PlainLead, e: React.MouseEvent | React.TouchEvent) => void;
+  onScheduleClick?: (lead: PlainLead) => void;
 }
 
-function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: LeadCardProps) {
+function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onScheduleClick }: LeadCardProps) {
   const handleWhatsAppClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     window.open(getWhatsAppLink(lead.phone), "_blank");
   }, [lead.phone]);
+
+  const handleScheduleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onScheduleClick) {
+      onScheduleClick(lead);
+    }
+  }, [lead, onScheduleClick]);
+
+  // Mostra botão agendar para leads que não estão em AGENDADO ou FINALIZADO
+  const showScheduleButton = !["AGENDADO", "FINALIZADO", "PERDIDO"].includes(lead.stage) && onScheduleClick;
 
   // PERF: Handler de drag nativo - instantâneo
   const handleDragHandleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -59,8 +72,10 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
             className={cn(
               "p-2.5 -ml-1 rounded cursor-grab active:cursor-grabbing",
               "text-zinc-500 hover:text-zinc-300 hover:bg-white/5 active:bg-white/10",
-              "touch-none select-none min-w-[44px] min-h-[44px] flex items-center justify-center"
+              "select-none min-w-[44px] min-h-[44px] flex items-center justify-center",
+              "active:scale-110 transition-transform duration-100"
             )}
+            style={{ touchAction: 'none' }}
           >
             <GripVertical className="w-6 h-6 pointer-events-none" />
           </div>
@@ -75,14 +90,39 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart }: Le
             </p>
           </div>
 
-          {/* Botão WhatsApp - aumentado para mobile */}
-          <button
-            onClick={handleWhatsAppClick}
-            className="shrink-0 p-3 rounded-md bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white active:bg-green-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
-            <MessageCircle className="w-5 h-5" />
-          </button>
+          {/* Botões de ação */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Botão Agendar - apenas para leads não agendados */}
+            {showScheduleButton && (
+              <button
+                onClick={handleScheduleClick}
+                className="p-2.5 rounded-md bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white active:bg-purple-600 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors"
+                title="Agendar"
+              >
+                <CalendarPlus className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Botão WhatsApp */}
+            <button
+              onClick={handleWhatsAppClick}
+              className="p-2.5 rounded-md bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white active:bg-green-600 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors"
+              title="WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+
+        {/* Agendamento - exibe quando tem appointmentInfo */}
+        {lead.appointmentInfo && (
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-purple-500/10 border border-purple-500/20">
+            <Calendar className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <p className="text-xs text-purple-300 font-medium">
+              {format(new Date(lead.appointmentInfo.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+            </p>
+          </div>
+        )}
 
         {/* Tags */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -136,6 +176,7 @@ export const LeadCard = memo(LeadCardInner, (prev, next) => {
     prev.lead.notes === next.lead.notes &&
     prev.lead.addOns === next.lead.addOns &&
     prev.lead.contractHistory?.contractCount === next.lead.contractHistory?.contractCount &&
+    prev.lead.appointmentInfo?.scheduledAt === next.lead.appointmentInfo?.scheduledAt &&
     prev.isOverlay === next.isOverlay &&
     prev.isDragging === next.isDragging
   );

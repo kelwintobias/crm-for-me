@@ -12,14 +12,13 @@ import { toast } from "sonner";
 import { PlainLead } from "@/types";
 import { Users, Sparkles } from "lucide-react";
 import { LostLeadReasonModal } from "../modals/lost-lead-reason-modal";
+import { QuickScheduleModal } from "../modals/quick-schedule-modal";
 import { useRealtimeLeads } from "@/hooks/use-realtime-leads";
 
 const STAGES: PipelineStage[] = [
   "NOVO_LEAD",
   "EM_NEGOCIACAO",
   "AGENDADO",
-  "EM_ATENDIMENTO",
-  "POS_VENDA",
   "PERDIDO",
   "FINALIZADO",
 ];
@@ -47,6 +46,8 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
   const [pendingLostLead, setPendingLostLead] = useState<{ lead: PlainLead, targetStage: PipelineStage } | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [leadToSchedule, setLeadToSchedule] = useState<PlainLead | null>(null);
 
   // Callback para refresh (usado no fallback de polling)
   const refreshLeads = useCallback(() => {
@@ -128,10 +129,43 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
         if (shouldShow) {
           map[lead.stage].push(lead);
         }
-      } else if (map[lead.stage]) {
+      }
+      // Redireciona leads de EM_ATENDIMENTO e POS_VENDA para EM_NEGOCIACAO
+      else if (lead.stage === "EM_ATENDIMENTO" || lead.stage === "POS_VENDA") {
+        map.EM_NEGOCIACAO.push(lead);
+      }
+      else if (map[lead.stage]) {
         map[lead.stage].push(lead);
       }
     });
+
+    // Ordena coluna AGENDADO por horário do agendamento (mais próximo primeiro)
+    map.AGENDADO.sort((a, b) => {
+      const dateA = a.appointmentInfo?.scheduledAt
+        ? new Date(a.appointmentInfo.scheduledAt).getTime()
+        : Infinity;
+      const dateB = b.appointmentInfo?.scheduledAt
+        ? new Date(b.appointmentInfo.scheduledAt).getTime()
+        : Infinity;
+      return dateA - dateB;
+    });
+
+    // Ordena todas as outras colunas por updatedAt (mais recente primeiro)
+    const columnsToSortByUpdatedAt: PipelineStage[] = [
+      "NOVO_LEAD",
+      "EM_NEGOCIACAO",
+      "PERDIDO",
+      "FINALIZADO",
+    ];
+
+    columnsToSortByUpdatedAt.forEach((stage) => {
+      map[stage].sort((a, b) => {
+        const dateA = new Date(a.updatedAt).getTime();
+        const dateB = new Date(b.updatedAt).getTime();
+        return dateB - dateA; // Mais recente primeiro
+      });
+    });
+
     return map;
   }, [leads]);
 
@@ -141,6 +175,12 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     if (dragRef.current.isDragging) return;
     setSelectedLead(lead);
     setIsEditModalOpen(true);
+  }, []);
+
+  // Handler para abrir modal de agendamento rápido
+  const handleScheduleClick = useCallback((lead: PlainLead) => {
+    setLeadToSchedule(lead);
+    setIsScheduleModalOpen(true);
   }, []);
 
   // PERF: Registra ref de coluna
@@ -201,6 +241,11 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
 
     const handleMouseMove = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current.isDragging) return;
+
+      // Previne scroll durante drag no mobile
+      if ('touches' in e) {
+        e.preventDefault();
+      }
 
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -285,9 +330,10 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     };
 
     // Event listeners
+    // IMPORTANTE: touchmove precisa de passive: false para permitir preventDefault()
     document.addEventListener('mousemove', handleMouseMove, { passive: true });
     document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleMouseMove, { passive: true });
+    document.addEventListener('touchmove', handleMouseMove, { passive: false });
     document.addEventListener('touchend', handleMouseUp);
 
     return () => {
@@ -367,6 +413,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
             onLeadClick={handleLeadClick}
             onDragStart={handleDragStart}
             registerRef={registerColumnRef}
+            onScheduleClick={handleScheduleClick}
           />
         ))}
       </div>
@@ -380,7 +427,13 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
             transform: `translate(${overlayPosition.x - 160}px, ${overlayPosition.y - 44}px) rotate(3deg)`,
           }}
         >
-          <div className="w-[320px] opacity-95 shadow-2xl">
+          <div
+            className="w-[320px] transition-transform duration-150"
+            style={{
+              transform: 'scale(1.03)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(var(--color-brand-accent-rgb), 0.2)',
+            }}
+          >
             <LeadCard
               lead={dragRef.current.lead}
               onClick={() => { }}
@@ -407,6 +460,18 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
           if (!open) setPendingLostLead(null);
         }}
         onConfirm={handleConfirmLost}
+      />
+
+      <QuickScheduleModal
+        open={isScheduleModalOpen}
+        onOpenChange={(open) => {
+          setIsScheduleModalOpen(open);
+          if (!open) setLeadToSchedule(null);
+        }}
+        lead={leadToSchedule}
+        onSuccess={() => {
+          router.refresh();
+        }}
       />
     </>
   );

@@ -33,9 +33,15 @@ export interface LeadContractHistory {
   lastContractDate: string;
 }
 
+export interface LeadAppointmentInfo {
+  scheduledAt: string;
+  duration: number;
+}
+
 export interface PlainLead extends Omit<Lead, 'value'> {
   value: number;
   contractHistory?: LeadContractHistory;
+  appointmentInfo?: LeadAppointmentInfo;
 }
 
 export interface PlainUser extends Omit<User, 'commissionRate'> {

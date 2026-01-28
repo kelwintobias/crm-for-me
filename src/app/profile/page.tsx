@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { User, Shield, Mail, Calendar, Settings } from "lucide-react";
+import { User, Shield, Mail, Calendar, Settings, ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,15 @@ export default async function ProfilePage() {
     return (
         <div className="container mx-auto py-10 px-4">
             <div className="max-w-2xl mx-auto space-y-6">
+                {/* Botão Voltar */}
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors min-h-[44px] -ml-1 px-2 py-2 rounded-lg hover:bg-white/[0.05]"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                    <span>Voltar ao Dashboard</span>
+                </Link>
+
                 <div className="flex items-center gap-4 mb-8">
                     <Avatar className="h-20 w-20 border-2 border-border">
                         <AvatarFallback className="text-2xl bg-muted text-muted-foreground">{initials}</AvatarFallback>

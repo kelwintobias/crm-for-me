@@ -5,6 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Normaliza telefone para comparação (últimos 11 dígitos apenas)
+ * Remove caracteres não numéricos e pega os últimos 11 dígitos
+ */
+export function normalizePhone(phone: string | null | undefined): string {
+  if (!phone) return "";
+  return phone.replace(/\D/g, "").slice(-11);
+}
+
 export function formatPhone(phone: string | null | undefined): string {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");

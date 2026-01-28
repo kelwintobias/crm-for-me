@@ -23,6 +23,7 @@ const createContractSchema = z.object({
     package: z.enum(["INTERMEDIARIO", "AVANCADO", "ELITE", "PRO_PLUS", "ULTRA_PRO", "EVOLUTION"]),
     addons: z.array(z.string()).default([]),
     termsAccepted: z.boolean().default(false),
+    customTotalValue: z.number().optional(),
 });
 
 // ============================================
@@ -67,10 +68,18 @@ export async function createContract(data: unknown) {
         const validated = createContractSchema.parse(data);
 
         // Calcular valor total no backend (segurança)
-        const totalValue = calculateTotalValue(
-            validated.package as ContractPackage,
-            validated.addons
-        );
+        let totalValue: number;
+
+        if (validated.customTotalValue !== undefined) {
+            // Se veio um valor customizado, usa ele
+            totalValue = validated.customTotalValue;
+        } else {
+            // Senão, calcula baseado no pacote e addons
+            totalValue = calculateTotalValue(
+                validated.package as ContractPackage,
+                validated.addons
+            );
+        }
 
         const contract = await prisma.contract.create({
             data: {
@@ -97,6 +106,34 @@ export async function createContract(data: unknown) {
             return { success: false, error: error.errors[0].message };
         }
         return { success: false, error: "Erro ao criar contrato" };
+    }
+}
+
+// ============================================
+// ATUALIZAR VALOR DO CONTRATO
+// ============================================
+
+export async function updateContractValue(id: string, newTotalValue: number) {
+    try {
+        await getCurrentUser();
+
+        // Validar input básico
+        if (newTotalValue < 0) {
+            return { success: false, error: "O valor não pode ser negativo" };
+        }
+
+        const contract = await prisma.contract.update({
+            where: { id },
+            data: {
+                totalValue: new Decimal(newTotalValue),
+            },
+        });
+
+        revalidatePath("/");
+        return { success: true, data: serializeContract(contract) };
+    } catch (error) {
+        console.error("Erro ao atualizar valor do contrato:", error);
+        return { success: false, error: "Erro ao atualizar valor" };
     }
 }
 

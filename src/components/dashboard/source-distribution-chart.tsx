@@ -13,10 +13,14 @@ interface SourceDistributionChartProps {
 }
 
 const COLORS: Record<string, string> = {
-  INSTAGRAM: "#E1306C",
-  GOOGLE: "#4285F4",
-  INDICACAO: "#10B981",
-  OUTRO: "#6B7280",
+  ANUNCIO: "#3B82F6",       // Blue (Google/Facebook Ads usually blueish)
+  INDICACAO: "#10B981",     // Emerald (Positive/Growth)
+  INFLUENCIADOR: "#E1306C", // Pink (Instagram/Social)
+  PARCEIRO: "#8B5CF6",      // Violet (Partnership)
+  PAGINA_PARCEIRA: "#6366F1", // Indigo
+  INSTAGRAM: "#E1306C",     // Pink (Legacy/Fallback)
+  GOOGLE: "#4285F4",        // Blue (Legacy/Fallback)
+  OUTRO: "#6B7280",         // Gray
 };
 
 export function SourceDistributionChart({ data }: SourceDistributionChartProps) {

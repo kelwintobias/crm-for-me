@@ -19,7 +19,7 @@ import { Search, Calendar as CalendarIcon, Clock, Loader2, User, Phone } from "l
 import { PlainLead, TimeSlot } from "@/types";
 import { createAppointment, getAvailableSlots } from "@/app/actions/appointments";
 import { getLeads } from "@/app/actions/leads";
-import { cn, formatPhone } from "@/lib/utils";
+import { cn, formatPhone, normalizePhone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -80,16 +80,17 @@ export function ScheduleLeadModal({ open, onOpenChange }: ScheduleLeadModalProps
     }
   };
 
-  // Filtrar leads conforme busca
+  // Filtrar leads conforme busca (normaliza telefone para comparação)
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredLeads(allLeads);
     } else {
       const query = searchQuery.toLowerCase();
+      const queryNormalized = normalizePhone(searchQuery);
       const filtered = allLeads.filter(
         (lead) =>
           lead.name.toLowerCase().includes(query) ||
-          lead.phone.includes(query)
+          normalizePhone(lead.phone).includes(queryNormalized)
       );
       setFilteredLeads(filtered);
     }

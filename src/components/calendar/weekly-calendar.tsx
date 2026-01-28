@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AppointmentCard } from "./appointment-card";
 import { getWeekAppointments } from "@/app/actions/appointments";
 import { toast } from "sonner";
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useRealtimeAppointments } from "@/hooks/use-realtime-appointments";
@@ -80,8 +80,8 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
     setCurrentWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
   };
 
-  // Dias da semana (seg-sex)
-  const weekDays = Array.from({ length: 5 }, (_, i) => addDays(currentWeekStart, i));
+  // Dias da semana (seg-dom - semana completa)
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
 
   // Agrupa agendamentos por dia
   const appointmentsByDay = weekDays.map((day) => ({
@@ -109,7 +109,7 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
             <CalendarIcon className="w-5 h-5 text-brand-accent" />
             <h2 className="text-lg font-semibold text-text-primary">
               {format(currentWeekStart, "d 'de' MMMM", { locale: ptBR })} -{" "}
-              {format(addDays(currentWeekStart, 4), "d 'de' MMMM 'de' yyyy", {
+              {format(addDays(currentWeekStart, 6), "d 'de' MMMM 'de' yyyy", {
                 locale: ptBR,
               })}
             </h2>
@@ -141,32 +141,47 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
           <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3 overflow-x-auto">
           {appointmentsByDay.map(({ date, appointments: dayAppointments }) => {
             const isToday = isSameDay(date, new Date());
+            const isWeekendDay = isWeekend(date);
 
             return (
               <div
                 key={date.toISOString()}
                 className={cn(
-                  "rounded-lg border border-white/[0.08] bg-brand-card/50 overflow-hidden",
-                  isToday && "ring-2 ring-brand-accent/50"
+                  "rounded-lg border overflow-hidden min-w-[140px]",
+                  isToday && "ring-2 ring-brand-accent/50",
+                  isWeekendDay
+                    ? "border-white/[0.04] bg-brand-card/30"
+                    : "border-white/[0.08] bg-brand-card/50"
                 )}
               >
                 {/* Cabeçalho do dia */}
                 <div
                   className={cn(
-                    "p-3 border-b border-white/[0.08]",
-                    isToday ? "bg-brand-accent/10" : "bg-white/[0.02]"
+                    "p-3 border-b",
+                    isToday
+                      ? "bg-brand-accent/10 border-brand-accent/20"
+                      : isWeekendDay
+                        ? "bg-white/[0.01] border-white/[0.04]"
+                        : "bg-white/[0.02] border-white/[0.08]"
                   )}
                 >
-                  <p className="text-xs text-text-tertiary uppercase font-semibold">
-                    {format(date, "EEEE", { locale: ptBR })}
+                  <p className={cn(
+                    "text-xs uppercase font-semibold",
+                    isWeekendDay ? "text-text-tertiary/60" : "text-text-tertiary"
+                  )}>
+                    {format(date, "EEE", { locale: ptBR })}
                   </p>
                   <p
                     className={cn(
                       "text-lg font-bold mt-1",
-                      isToday ? "text-brand-accent" : "text-text-primary"
+                      isToday
+                        ? "text-brand-accent"
+                        : isWeekendDay
+                          ? "text-text-secondary"
+                          : "text-text-primary"
                     )}
                   >
                     {format(date, "dd", { locale: ptBR })}
@@ -174,10 +189,13 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
                 </div>
 
                 {/* Lista de agendamentos */}
-                <div className="p-3 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
+                <div className={cn(
+                  "p-2 space-y-2 min-h-[150px] max-h-[400px] overflow-y-auto",
+                  isWeekendDay && "opacity-80"
+                )}>
                   {dayAppointments.length === 0 ? (
-                    <p className="text-center text-text-tertiary text-sm py-8">
-                      Sem agendamentos
+                    <p className="text-center text-text-tertiary text-xs py-6">
+                      {isWeekendDay ? "-" : "Sem agendamentos"}
                     </p>
                   ) : (
                     dayAppointments.map((apt) => (

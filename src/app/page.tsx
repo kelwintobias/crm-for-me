@@ -5,7 +5,7 @@ import { getDashboardMetrics } from "./actions/dashboard";
 import { getContracts } from "./actions/contracts";
 import { getFixedCosts } from "./actions/fixed-costs";
 import { getContractMetrics } from "./actions/contract-metrics";
-import { getAllAppointments } from "./actions/appointments";
+import { getAllAppointments, getScheduledAppointmentsByLeadIds } from "./actions/appointments";
 import { getPessoasData } from "./actions/pessoas";
 import { getDebtors } from "./actions/debtors";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
@@ -55,8 +55,14 @@ export default async function HomePage() {
   const rawLeads = leadsResult.data || [];
   const appointments = appointmentsResult.data || [];
   const pessoasData = pessoasResult.data || [];
-
   const contracts = contractsResult.data || [];
+
+  // Buscar agendamentos ativos para leads na coluna AGENDADO
+  const agendadoLeadIds = rawLeads
+    .filter((lead) => lead.stage === "AGENDADO")
+    .map((lead) => lead.id);
+  const appointmentsByLeadResult = await getScheduledAppointmentsByLeadIds(agendadoLeadIds);
+  const appointmentsByLead = appointmentsByLeadResult.data || new Map();
 
   // OTIMIZAÇÃO: Criar Map de contratos por telefone para O(1) lookup
   // Antes: O(n²) com filter() para cada lead
@@ -69,10 +75,11 @@ export default async function HomePage() {
     contractsByPhone.set(phone, existing);
   }
 
-  // CONVERSÃO DE DADOS (Decimal -> Number) + Enriquecimento com histórico de contratos
+  // CONVERSÃO DE DADOS (Decimal -> Number) + Enriquecimento com histórico de contratos e agendamentos
   const leads = rawLeads.map((lead) => {
     const leadPhone = lead.phone.replace(/\D/g, "");
     const leadContracts = contractsByPhone.get(leadPhone) || []; // O(1) lookup
+    const appointmentInfo = appointmentsByLead.get(lead.id); // O(1) lookup
 
     return {
       ...lead,
@@ -83,6 +90,12 @@ export default async function HomePage() {
           ltv: leadContracts.reduce((sum, c) => sum + Number(c.totalValue), 0),
           lastPackage: leadContracts[0].package,
           lastContractDate: String(leadContracts[0].contractDate),
+        },
+      }),
+      ...(appointmentInfo && {
+        appointmentInfo: {
+          scheduledAt: appointmentInfo.scheduledAt,
+          duration: appointmentInfo.duration,
         },
       }),
     };

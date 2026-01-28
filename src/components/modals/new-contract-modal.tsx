@@ -24,55 +24,57 @@ import {
     Loader2,
     FileText,
     Calendar as CalendarIcon,
+    Pencil,
+    Trash2,
     DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-// Tipos locais (sem imports do Prisma para evitar problemas)
-type ContractSourceType = "ANUNCIO" | "INDICACAO" | "INFLUENCIADOR" | "PARCEIRO";
-type ContractPackageType = "INTERMEDIARIO" | "AVANCADO" | "ELITE" | "PRO_PLUS" | "ULTRA_PRO" | "EVOLUTION";
-
-// Preços
-const PACKAGE_PRICES: Record<ContractPackageType, number> = {
-    INTERMEDIARIO: 25.00,
-    AVANCADO: 40.00,
-    ELITE: 50.00,
-    PRO_PLUS: 75.00,
-    ULTRA_PRO: 100.00,
-    EVOLUTION: 150.00,
-};
-
-const PACKAGE_OPTIONS: { value: ContractPackageType; label: string; price: number }[] = [
-    { value: "INTERMEDIARIO", label: "Intermediário", price: 25.00 },
-    { value: "AVANCADO", label: "Avançado", price: 40.00 },
-    { value: "ELITE", label: "Elite", price: 50.00 },
-    { value: "PRO_PLUS", label: "Pro Plus", price: 75.00 },
-    { value: "ULTRA_PRO", label: "Ultra Pro", price: 100.00 },
-    { value: "EVOLUTION", label: "Evolution", price: 150.00 },
-];
-
-const SOURCE_OPTIONS: { value: ContractSourceType; label: string }[] = [
-    { value: "ANUNCIO", label: "Anúncio" },
-    { value: "INDICACAO", label: "Indicação" },
-    { value: "INFLUENCIADOR", label: "Influenciador" },
-    { value: "PARCEIRO", label: "Parceiro" },
-];
-
-const ADDON_OPTIONS = [
-    { id: "ATIVACAO_WINDOWS", label: "Ativação do Windows", price: 19.90 },
-    { id: "UPBOOST_PLUS", label: "UPBOOST+", price: 29.90 },
-    { id: "REMOCAO_DELAY", label: "Remoção Delay", price: 35.90 },
-    { id: "FORMATACAO_PADRAO", label: "Formatação Padrão", price: 59.90 },
-    { id: "FORMATACAO_PROFISSIONAL", label: "Formatação Profissional", price: 99.90 },
-];
+// Types
+export type ContractSourceType = "ANUNCIO" | "INDICACAO" | "INFLUENCIADOR" | "PARCEIRO";
+export type ContractPackageType = "INTERMEDIARIO" | "AVANCADO" | "ELITE" | "PRO_PLUS" | "ULTRA_PRO" | "EVOLUTION";
 
 interface NewContractModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
 }
+
+// Data Options
+const SOURCE_OPTIONS: { label: string; value: ContractSourceType }[] = [
+    { label: "Anúncio", value: "ANUNCIO" },
+    { label: "Indicação", value: "INDICACAO" },
+    { label: "Influenciador", value: "INFLUENCIADOR" },
+    { label: "Parceiro", value: "PARCEIRO" },
+];
+
+const PACKAGE_PRICES: Record<ContractPackageType, number> = {
+    INTERMEDIARIO: 25.0,
+    AVANCADO: 50.0,
+    ELITE: 80.0,
+    PRO_PLUS: 15.0,
+    ULTRA_PRO: 100.0,
+    EVOLUTION: 15.0,
+};
+
+const PACKAGE_OPTIONS: { label: string; value: ContractPackageType; price: number }[] = [
+    { label: "Intermediário", value: "INTERMEDIARIO", price: PACKAGE_PRICES.INTERMEDIARIO },
+    { label: "Avançado", value: "AVANCADO", price: PACKAGE_PRICES.AVANCADO },
+    { label: "Elite", value: "ELITE", price: PACKAGE_PRICES.ELITE },
+    { label: "Pro Plus", value: "PRO_PLUS", price: PACKAGE_PRICES.PRO_PLUS },
+    { label: "Ultra Pro", value: "ULTRA_PRO", price: PACKAGE_PRICES.ULTRA_PRO },
+    { label: "Evolution", value: "EVOLUTION", price: PACKAGE_PRICES.EVOLUTION },
+];
+
+const ADDON_OPTIONS = [
+    { id: "ATIVACAO_WINDOWS", label: "Ativação Windows", price: 15.0 },
+    { id: "UPBOOST_PLUS", label: "UPBOOST+", price: 15.0 },
+    { id: "REMOCAO_DELAY", label: "Remoção Delay", price: 15.0 },
+    { id: "FORMATACAO_PADRAO", label: "Formatação Padrão", price: 40.0 },
+    { id: "FORMATACAO_PROFISSIONAL", label: "Formatação Profissional", price: 80.0 },
+];
 
 export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractModalProps) {
     const router = useRouter();
@@ -89,13 +91,22 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
     const [selectedPackage, setSelectedPackage] = useState<ContractPackageType>("INTERMEDIARIO");
     const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 
+    // Manual Value State
+    const [isEditingValue, setIsEditingValue] = useState(false);
+    const [customValue, setCustomValue] = useState("");
+
     // Calcular valor total
     const packagePrice = PACKAGE_PRICES[selectedPackage];
     const addonsPrice = selectedAddons.reduce((sum, addonId) => {
         const addon = ADDON_OPTIONS.find(a => a.id === addonId);
         return sum + (addon?.price || 0);
     }, 0);
-    const totalValue = packagePrice + addonsPrice;
+
+    // Se estiver editando, usa o valor customizado (se válido). Senão, usa o calculado.
+    const calculatedTotal = packagePrice + addonsPrice;
+    const totalValue = isEditingValue && customValue
+        ? (parseFloat(customValue.replace(",", ".")) || 0)
+        : calculatedTotal;
 
     const toggleAddon = (addonId: string) => {
         setSelectedAddons(prev =>
@@ -115,6 +126,8 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
         setSource("ANUNCIO");
         setSelectedPackage("INTERMEDIARIO");
         setSelectedAddons([]);
+        setIsEditingValue(false);
+        setCustomValue("");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -143,6 +156,7 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
             package: selectedPackage,
             addons: selectedAddons,
             termsAccepted: true,
+            customTotalValue: isEditingValue ? totalValue : undefined, // Envia override se ativado
         });
 
         setLoading(false);
@@ -297,7 +311,7 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
                                 disabled={loading}
                             >
                                 {SOURCE_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value} className="bg-brand-card">
+                                    <option key={opt.value} value={opt.value} className="text-black bg-white">
                                         {opt.label}
                                     </option>
                                 ))}
@@ -315,7 +329,7 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
                                 disabled={loading}
                             >
                                 {PACKAGE_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value} className="bg-brand-card">
+                                    <option key={opt.value} value={opt.value} className="text-black bg-white">
                                         {opt.label} - R$ {opt.price.toFixed(2)}
                                     </option>
                                 ))}
@@ -361,10 +375,61 @@ export function NewContractModal({ open, onOpenChange, onSuccess }: NewContractM
                                 <DollarSign className="w-5 h-5 text-emerald-400" />
                                 <span className="text-text-secondary font-medium">Valor Total</span>
                             </div>
-                            <span className="text-2xl font-bold text-emerald-400">
-                                R$ {totalValue.toFixed(2)}
-                            </span>
+
+                            <div className="flex items-center gap-2">
+                                {isEditingValue ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-emerald-500 font-bold">R$</span>
+                                        <Input
+                                            value={customValue}
+                                            onChange={(e) => setCustomValue(e.target.value)}
+                                            onBlur={() => {
+                                                if (!customValue || isNaN(parseFloat(customValue.replace(",", ".")))) {
+                                                    setCustomValue("");
+                                                    setIsEditingValue(false);
+                                                }
+                                            }}
+                                            className="w-24 h-8 bg-black/20 border-emerald-500/30 text-emerald-400 font-bold text-right"
+                                            autoFocus
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setIsEditingValue(false)}
+                                            className="h-8 w-8 text-text-tertiary"
+                                            title="Voltar ao cálculo automático"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl font-bold text-emerald-400">
+                                            R$ {totalValue.toFixed(2)}
+                                        </span>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setCustomValue(totalValue.toFixed(2));
+                                                setIsEditingValue(true);
+                                            }}
+                                            className="h-8 w-8 text-text-tertiary hover:text-emerald-400"
+                                            title="Editar valor manualmente"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                        {isEditingValue && (
+                            <p className="text-xs text-emerald-500/70 mt-2 text-right">
+                                Valor manual ativado. O cálculo automático foi pausado.
+                            </p>
+                        )}
                     </div>
 
                     {/* Botões */}
