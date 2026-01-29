@@ -53,50 +53,6 @@ function isWithinBusinessHours(date: Date): boolean {
   return true;
 }
 
-// Verifica conflitos de horário
-async function hasConflict(
-  scheduledAt: Date,
-  duration: number,
-  excludeAppointmentId?: string
-): Promise<boolean> {
-  const endTime = new Date(scheduledAt.getTime() + duration * 60000);
-
-  // Busca agendamentos que PODEM conflitar (janela de tempo relevante)
-  // Um agendamento existente conflita se:
-  // - Começa antes do novo terminar E termina depois do novo começar
-  const potentialConflicts = await prisma.appointment.findMany({
-    where: {
-      status: "SCHEDULED",
-      id: excludeAppointmentId ? { not: excludeAppointmentId } : undefined,
-      // Filtra apenas agendamentos no mesmo dia para otimização
-      scheduledAt: {
-        gte: new Date(scheduledAt.getTime() - 24 * 60 * 60000), // 24h antes
-        lte: new Date(endTime.getTime() + 24 * 60 * 60000), // 24h depois
-      },
-    },
-    select: {
-      scheduledAt: true,
-      duration: true,
-    },
-  });
-
-  // Verifica sobreposição real considerando a duração
-  for (const existing of potentialConflicts) {
-    const existingEnd = new Date(
-      existing.scheduledAt.getTime() + existing.duration * 60000
-    );
-
-    // Há conflito se os intervalos se sobrepõem:
-    // [scheduledAt, endTime) ∩ [existing.scheduledAt, existingEnd) ≠ ∅
-    const hasOverlap = scheduledAt < existingEnd && endTime > existing.scheduledAt;
-
-    if (hasOverlap) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 // ============================================
 // AÇÕES PÚBLICAS
@@ -118,16 +74,9 @@ export async function createAppointment(data: unknown) {
       };
     }
 
-    if (await hasConflict(scheduledAt, validated.duration)) {
-      return {
-        success: false,
-        error: "Horário já está reservado"
-      };
-    }
-
-    // Verifica se o lead existe e pertence ao usuário
+    // Verifica se o lead existe
     const lead = await prisma.lead.findUnique({
-      where: { id: validated.leadId, userId: user.id, deletedAt: null },
+      where: { id: validated.leadId, deletedAt: null },
     });
 
     if (!lead) {
@@ -230,14 +179,6 @@ export async function rescheduleAppointment(data: unknown) {
       return {
         success: false,
         error: "Apenas agendamentos ativos podem ser remarcados"
-      };
-    }
-
-    // Verifica conflito (excluindo o próprio agendamento)
-    if (await hasConflict(scheduledAt, existing.duration, validated.id)) {
-      return {
-        success: false,
-        error: "Horário já está reservado"
       };
     }
 
@@ -347,35 +288,8 @@ export async function cancelAppointment(data: unknown) {
 // Buscar horários disponíveis para um dia
 export async function getAvailableSlots(date: string) {
   try {
-    // Nota: Auth é validada pelo middleware antes da página carregar
-    // Dados são compartilhados entre todos os usuários
-
     // Offset do Brasil (UTC-3)
     const BRT_OFFSET = 3;
-
-    // Configurar o range do dia em UTC
-    // Dia começa às 00:00 BRT = 03:00 UTC
-    const startOfDay = new Date(date);
-    startOfDay.setUTCHours(BRT_OFFSET, 0, 0, 0);
-
-    // Dia termina às 23:59 BRT = 02:59 UTC do dia seguinte
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
-
-    // Busca todos os agendamentos que caem neste "dia brasileiro"
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        status: "SCHEDULED",
-        scheduledAt: {
-          gte: startOfDay,
-          lt: endOfDay,
-        },
-      },
-      select: {
-        scheduledAt: true,
-        duration: true,
-      },
-    });
 
     // Gera slots de 30 em 30 minutos das 6h às 22h (horário de Brasília)
     const slots: Array<{
@@ -392,19 +306,9 @@ export async function getAvailableSlots(date: string) {
         const slotTime = new Date(date);
         slotTime.setUTCHours(hour + BRT_OFFSET, minute, 0, 0);
 
-        // Verifica se há conflito (considerando 1 hora de duração)
-        const slotEnd = new Date(slotTime.getTime() + 60 * 60000);
-
-        const hasConflict = appointments.some((apt: { scheduledAt: Date; duration: number }) => {
-          const aptEnd = new Date(
-            apt.scheduledAt.getTime() + apt.duration * 60000
-          );
-          return slotTime < aptEnd && slotEnd > apt.scheduledAt;
-        });
-
         slots.push({
           time: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
-          available: !hasConflict,
+          available: true,
           scheduledAt: slotTime.toISOString(),
         });
       }
