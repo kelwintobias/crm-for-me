@@ -1,143 +1,150 @@
 # UpBoost CRM
 
-CRM de vendas com pipeline Kanban para gestão de leads.
+CRM de vendas moderno com pipeline Kanban, gestão de contratos e métricas financeiras em tempo real.
 
-## Tecnologias
+## 🚀 Tecnologias
 
-- **Next.js 15** (App Router)
-- **TypeScript**
-- **Tailwind CSS** (Design System customizado)
-- **Supabase** (Auth + PostgreSQL)
-- **Prisma** (ORM)
-- **@dnd-kit** (Drag & Drop)
-- **Shadcn/ui** (Componentes)
+- **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
+- **Linguagem:** [TypeScript](https://www.typescriptlang.org/)
+- **Estilização:** [Tailwind CSS](https://tailwindcss.com/) (Design System customizado)
+- **Banco de Dados:** [PostgreSQL](https://www.postgresql.org/) (via [Supabase](https://supabase.com/))
+- **ORM:** [Prisma](https://www.prisma.io/)
+- **Drag & Drop:** [@dnd-kit](https://dndkit.com/)
+- **UI Components:** [Shadcn/ui](https://ui.shadcn.com/) + [Radix UI](https://www.radix-ui.com/)
+- **Gráficos:** [Recharts](https://recharts.org/)
 
-## Configuração
+## ✨ Funcionalidades Principais
 
-### 1. Clonar e Instalar Dependências
+- **Dashboard Financeiro:**
+  - Métricas KPIs (MRR, Ticket Médio, Receita Total).
+  - Gráficos de distribuição de vendas, leads por origem e funil de conversão.
+  - **Cores Dinâmicas:** Gráficos com paleta de cores vibrante e mapeamento consistente.
+
+- **Gestão de Contratos:**
+  - Criação e edição de contratos.
+  - **Override Manual de Valor:** Capacidade de editar manualmente o valor total do contrato, ignorando o cálculo automático (pacote + addons).
+  - Geração automática de parcelas e controle de inadimplência.
+
+- **Pipeline Kanban:**
+  - Colunas personalizáveis (Novo Lead, Em Negociação, Agendado, etc.).
+  - Drag & Drop com persistência de estado.
+
+- **Agenda e Webhooks:**
+  - Integração com Evolution API para mensagens.
+  - Agendamento de reuniões com validação de horário comercial.
+
+## 🛠️ Configuração do Ambiente
+
+### 1. Clonar e Instalar
 
 ```bash
+git clone https://github.com/kelwintobias/crm-for-me.git
+cd crm-for-me
 npm install
 ```
 
-### 2. Configurar Supabase
+### 2. Configurar Variáveis de Ambiente
 
-1. Crie um projeto no [Supabase](https://supabase.com)
-2. Vá em **Settings > API** e copie:
-   - Project URL
-   - Anon/Public Key
-
-3. Vá em **Settings > Database** e copie a Connection String
-
-4. **IMPORTANTE**: Vá em **Authentication > Providers > Email** e desabilite:
-   - "Confirm email" (para criar usuários sem verificação)
-
-### 3. Configurar Variáveis de Ambiente
-
-Edite o arquivo `.env`:
+Copie o arquivo `.env.example` para `.env` e preencha as chaves:
 
 ```env
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
+# Banco de Dados (Supabase Transaction Pooler)
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:6543/postgres?pgbouncer=true"
+
+# Banco de Dados Direto (Supabase Direct Connection - para migrações)
+DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
+
+# Supabase Client
 NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT-REF].supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="[ANON-KEY]"
+
+# API de Mensagens (Opcional)
+EVOLUTION_API_URL="https://api.seudominio.com"
+EVOLUTION_API_TOKEN="[TOKEN]"
 ```
 
-### 4. Configurar Banco de Dados
+### 3. Banco de Dados
+
+Sincronize o schema do Prisma com o banco de dados:
 
 ```bash
 npx prisma db push
+# OU para criar migrações
+npx prisma migrate dev
 ```
 
-### 5. Criar Usuário Inicial
-
-No dashboard do Supabase, vá em **Authentication > Users** e crie um usuário com email/senha.
-
-### 6. Executar
+### 4. Executar em Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000)
+Acesse [http://localhost:3000](http://localhost:3000).
 
-## Funcionalidades
+---
 
-- **Login com Email/Senha** - Autenticação via Supabase
-- **Kanban Board** - 5 colunas: Novos, Em Contato, Vendido Único, Vendido Mensal, Perdido
-- **Drag & Drop** - Arraste leads entre colunas com atualização otimista
-- **Dashboard** - Métricas em tempo real (Leads na Esteira, Vendas Únicas, Vendas Mensais)
-- **Cadastro de Leads** - Nome, Telefone, Origem
-- **Edição de Leads** - Plano de interesse, Notas
-- **WhatsApp** - Botão de contato rápido via deep link
-
-## Design System
-
-| Cor | Código | Uso |
-|-----|--------|-----|
-| Azul Profundo | `#121724` | Background geral |
-| Cinza Dark | `#262626` | Cards e painéis |
-| Amarelo | `#FFD300` | Ações primárias |
-| Branco | `#FFFFFF` | Títulos |
-| Cinza Claro | `#A1A1AA` | Descrições |
-
-## Scripts
-
-```bash
-npm run dev      # Desenvolvimento
-npm run build    # Build de produção
-npm run start    # Executar produção
-npm run lint     # Verificar código
-npm run db:push  # Sincronizar schema do Prisma
-npm run db:studio # Abrir Prisma Studio
-```
-
-## Estrutura do Projeto
+## 🏗️ Estrutura do Projeto
 
 ```
 src/
 ├── app/
-│   ├── actions/      # Server Actions (leads, auth)
-│   ├── auth/         # Callback OAuth
-│   ├── login/        # Página de login
-│   └── page.tsx      # Dashboard principal
+│   ├── actions/          # Server Actions (Lógica de Backend)
+│   │   ├── contracts.ts  # Gestão de contratos (inclui override de valor)
+│   │   ├── dashboard.ts  # Métricas e agregações
+│   │   └── leads.ts      # Manipulação de leads
+│   ├── api/              # API Routes (Webhooks)
+│   └── page.tsx          # Dashboard Principal
 ├── components/
-│   ├── dashboard/    # Métricas e view principal
-│   ├── kanban/       # Board, colunas e cards
-│   ├── layout/       # Header e UserMenu
-│   ├── modals/       # NewLead e EditLead
-│   └── ui/           # Componentes Shadcn
+│   ├── dashboard/        # Gráficos e Widgets (Recharts)
+│   │   ├── sales-distribution-chart.tsx
+│   │   └── conversion-funnel.tsx
+│   ├── modals/           # Modais de Interação
+│   │   ├── new-contract-modal.tsx      # Criação (+ edição manual)
+│   │   └── edit-contract-value-modal.tsx # Edição de valor pós-criação
+│   └── kanban/           # Quadro de Leads
 ├── lib/
-│   ├── prisma.ts     # Cliente Prisma
-│   ├── supabase/     # Clientes Supabase (client/server)
-│   └── utils.ts      # Funções utilitárias
-├── types/            # Tipos TypeScript
-└── middleware.ts     # Proteção de rotas
+│   ├── prisma.ts         # Instância do Prisma Client
+│   └── utils.ts          # Helpers (formatação de moeda, datas)
+└── styles/               # CSS Global
 ```
 
-## Deploy
+## 🐛 Solução de Problemas Comuns
 
-### Vercel
+### ChunkLoadError
+**Sintoma:** O navegador exibe `ChunkLoadError` ao navegar entre páginas (ex: Tabela de Devedores).
+**Causa:** Incompatibilidade temporária entre os arquivos compilados no servidor e o cache do navegador durante o desenvolvimento (Hot Reload).
+**Solução:**
+1. Pare o servidor (`Ctrl + C`).
+2. Rode `npm run dev` novamente.
+3. Recarregue a página com `Ctrl + F5`.
 
-1. Conecte o repositório à Vercel
-2. Configure as variáveis de ambiente
-3. Deploy automático a cada push
+### Cores dos Gráficos Sumindo
+**Causa:** O Tailwind CSS pode "limpar" (purge) classes de cores geradas dinamicamente se elas não estiverem explícitas no código.
+**Solução:**
+- Use atributos `style={{ fill: "#HEX" }}` diretamente nos componentes do Recharts ou mapeie cores usando constantes hexadecimais explícitas em vez de classes utilitárias constuídas via string (ex: `bg-${color}-500`).
+
+### Erro de Serialização (Decimal)
+**Sintoma:** Erro ao passar dados do Prisma para Componentes Cliente (`Decimal` não é serializável).
+**Solução:** Converta campos `Decimal` para `number` ou `string` nas Server Actions antes de retornar os dados.
+```typescript
+totalValue: Number(contract.totalValue) // Exemplo
+```
+
+## 📦 Scripts Disponíveis
+
+```bash
+npm run dev       # Ambiente de desenvolvimento
+npm run build     # Build de produção
+npm run start     # Executar build de produção
+npm run lint      # Checagem de código (ESLint)
+npm run db:studio # Interface visual do banco de dados (Prisma Studio)
+```
+
+## 🔐 Segurança e Deploy
+
+- NUNCA comite o arquivo `.env` ou `.env.local`.
+- Utilize **GitHub Secrets** para configurar variáveis de ambiente no CI/CD.
+- Para deploy na Vercel: Configure as variáveis de ambiente no painel do projeto e conecte o repositório GitHub.
 
 ---
-
-## Segurança 🔒
-
-- **NÃO** comite o arquivo `.env` com chaves reais. Use variáveis de ambiente locais e **GitHub Secrets** para CI.  
-- Este repositório foi tornado **público** por solicitação e **não contém chaves sensíveis** no repositório. Se você adicionar chaves no `.env`, **NÃO** as commite — utilize GitHub Secrets.  
-- Configure segredos em: _Repository → Settings → Secrets and variables → Actions_.  
-- Caso alguma chave vaze, revogue/roteie a chave imediatamente.
-
-## CI / Checks ✅
-
-Adicionei um workflow básico em `.github/workflows/ci.yml` que executa:
-- Instalação de dependências (npm ci)
-- Build (`npm run build`)
-- Testes e lint quando presentes
-
-Considere ativar proteções de branch (ex.: exigir checks) nas configurações do repositório.
-
-Desenvolvido com base no PRD UpBoost CRM MVP v2
+Desenvolvido por [Seu Nome/Time]
