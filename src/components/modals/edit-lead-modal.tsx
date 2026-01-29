@@ -47,6 +47,7 @@ import {
   User,
   ShoppingBag,
   CalendarIcon,
+  CalendarPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -88,6 +89,7 @@ interface EditLeadModalProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (lead: PlainLead) => void;
   onDelete?: (leadId: string) => void;
+  onSchedule?: (lead: PlainLead) => void;
 }
 
 export function EditLeadModal({
@@ -96,6 +98,7 @@ export function EditLeadModal({
   onOpenChange,
   onUpdate,
   onDelete,
+  onSchedule,
 }: EditLeadModalProps) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -256,6 +259,22 @@ export function EditLeadModal({
                 Visualize e edite todas as informacoes
               </DialogDescription>
             </div>
+            {/* Quick Schedule */}
+            {onSchedule && lead && !["AGENDADO", "FINALIZADO", "PERDIDO"].includes(lead.stage) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  onOpenChange(false);
+                  onSchedule(lead);
+                }}
+                className="text-purple-400 hover:bg-purple-500/10"
+                title="Agendar"
+              >
+                <CalendarPlus className="w-5 h-5" />
+              </Button>
+            )}
             {/* Quick WhatsApp */}
             <Button
               type="button"

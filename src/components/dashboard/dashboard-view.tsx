@@ -78,6 +78,10 @@ const AppointmentDetailModal = dynamic(() => import("../modals/appointment-detai
   ssr: false,
 });
 
+const QuickScheduleModal = dynamic(() => import("../modals/quick-schedule-modal").then(mod => ({ default: mod.QuickScheduleModal })), {
+  ssr: false,
+});
+
 // Tab Components
 import { OverviewTab } from "./overview-tab";
 import { FinancialTab } from "./financial-tab";
@@ -297,6 +301,9 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     if (!open) dispatch({ type: 'SET_SELECTED_CUSTOMER', customer: null });
   }, []);
 
+  // Estado para agendamento rápido (via ficha do lead)
+  const [quickScheduleLead, setQuickScheduleLead] = useState<PlainLead | null>(null);
+
   // PERF FIX: Estado controlado da aba para desmontagem seletiva de componentes
   // Lê a aba inicial da URL (query param ?tab=xxx)
   const tabFromUrl = searchParams.get("tab");
@@ -436,6 +443,11 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     setSelectedLead(lead);
   }, []);
 
+  const handleScheduleFromModal = useCallback((lead: PlainLead) => {
+    setSelectedLead(null);
+    setQuickScheduleLead(lead);
+  }, [setSelectedLead]);
+
   const handleUpdateLead = useCallback((_updatedLead: PlainLead) => {
     setSelectedLead(null);
     router.refresh();
@@ -496,6 +508,18 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
         onOpenChange={(open) => !open && setSelectedLead(null)}
         onUpdate={handleUpdateLead}
         onDelete={handleDeleteLead}
+        onSchedule={handleScheduleFromModal}
+      />
+
+      {/* Modal de Agendamento Rápido (via ficha do lead) */}
+      <QuickScheduleModal
+        open={quickScheduleLead !== null}
+        onOpenChange={(open) => !open && setQuickScheduleLead(null)}
+        lead={quickScheduleLead}
+        onSuccess={() => {
+          setQuickScheduleLead(null);
+          router.refresh();
+        }}
       />
 
       {/* Modal de Agendamento */}
