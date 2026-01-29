@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle } from "lucide-react";
+import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle, CheckCircle2 } from "lucide-react";
 import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, PlainLead } from "@/types";
 import { ShoppingBag } from "lucide-react";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
@@ -120,6 +120,16 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
             <Calendar className="w-3.5 h-3.5 text-purple-400 shrink-0" />
             <p className="text-xs text-purple-300 font-medium">
               {format(new Date(lead.appointmentInfo.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+            </p>
+          </div>
+        )}
+
+        {/* Data de finalização */}
+        {lead.stage === "FINALIZADO" && (
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <p className="text-xs text-emerald-300 font-medium">
+              Finalizado em {format(new Date(lead.updatedAt), "dd/MM/yyyy", { locale: ptBR })}
             </p>
           </div>
         )}

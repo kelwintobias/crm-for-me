@@ -51,7 +51,8 @@
       "Bash(ls -la \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\kanban\"\" && echo \"---\" && ls -la \"C:UserskelwiDocumentscrm-for-mesrcappactions\"\")",
       "Bash(if not exist \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\webhook-logs\" mkdir \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\webhook-logs\")",
       "Bash(netstat:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(npx vercel:*)"
     ]
   }
 }

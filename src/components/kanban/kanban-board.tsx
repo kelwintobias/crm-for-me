@@ -130,6 +130,18 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
           map[lead.stage].push(lead);
         }
       }
+      // Filtra coluna AGENDADO para mostrar apenas agendamentos de hoje
+      else if (lead.stage === "AGENDADO") {
+        if (lead.appointmentInfo?.scheduledAt) {
+          const aptDate = new Date(lead.appointmentInfo.scheduledAt);
+          if (aptDate.toDateString() === now.toDateString()) {
+            map.AGENDADO.push(lead);
+          }
+        } else {
+          // Lead em AGENDADO sem info de agendamento - exibe para nao ficar oculto
+          map.AGENDADO.push(lead);
+        }
+      }
       // Redireciona leads de EM_ATENDIMENTO e POS_VENDA para EM_NEGOCIACAO
       else if (lead.stage === "EM_ATENDIMENTO" || lead.stage === "POS_VENDA") {
         map.EM_NEGOCIACAO.push(lead);
@@ -139,32 +151,14 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
       }
     });
 
-    // Ordena coluna AGENDADO por horário do agendamento (mais próximo primeiro)
-    map.AGENDADO.sort((a, b) => {
-      const dateA = a.appointmentInfo?.scheduledAt
-        ? new Date(a.appointmentInfo.scheduledAt).getTime()
-        : Infinity;
-      const dateB = b.appointmentInfo?.scheduledAt
-        ? new Date(b.appointmentInfo.scheduledAt).getTime()
-        : Infinity;
-      return dateA - dateB;
-    });
-
-    // Ordena todas as outras colunas por updatedAt (mais recente primeiro)
-    const columnsToSortByUpdatedAt: PipelineStage[] = [
-      "NOVO_LEAD",
-      "EM_NEGOCIACAO",
-      "PERDIDO",
-      "FINALIZADO",
-    ];
-
-    columnsToSortByUpdatedAt.forEach((stage) => {
+    // Ordena todas as colunas por updatedAt (mais recente primeiro)
+    for (const stage of STAGES) {
       map[stage].sort((a, b) => {
         const dateA = new Date(a.updatedAt).getTime();
         const dateB = new Date(b.updatedAt).getTime();
-        return dateB - dateA; // Mais recente primeiro
+        return dateB - dateA;
       });
-    });
+    }
 
     return map;
   }, [leads]);

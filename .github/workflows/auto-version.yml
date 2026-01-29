@@ -1,0 +1,57 @@
+name: Auto Version
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'version.json'
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Increment Version
+        run: |
+          # Read current version
+          VERSION=$(cat version.json | grep -oP '"version":\s*"\K[^"]+')
+          
+          # Split version into parts
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          
+          # Increment logic: patch -> minor -> major
+          if [ $PATCH -lt 9 ]; then
+            PATCH=$((PATCH + 1))
+          elif [ $MINOR -lt 9 ]; then
+            PATCH=0
+            MINOR=$((MINOR + 1))
+          elif [ $MAJOR -lt 9 ]; then
+            PATCH=0
+            MINOR=0
+            MAJOR=$((MAJOR + 1))
+          fi
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          
+          # Update version.json
+          echo "{
+            \"version\": \"$NEW_VERSION\"
+          }" > version.json
+
+      - name: Commit Version Update
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add version.json
+          git diff --staged --quiet || git commit -m "chore: bump version to v${{ env.NEW_VERSION }}"
+          git push
