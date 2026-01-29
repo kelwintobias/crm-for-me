@@ -348,6 +348,63 @@ export async function deleteLead(id: string) {
 }
 
 // ============================================
+// LISTAR LEADS DO USUÁRIO (para página de perfil)
+// ============================================
+
+export async function getMyLeads() {
+  try {
+    const user = await getCurrentUser();
+
+    const leads = await prisma.lead.findMany({
+      where: {
+        userId: user.id,
+        deletedAt: null,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      take: 50, // Limita aos 50 mais recentes
+    });
+
+    // Estatísticas
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Início da semana (domingo)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Conta leads atualizados hoje
+    const todayLeads = leads.filter((lead) => new Date(lead.updatedAt) >= todayStart);
+    const weekLeads = leads.filter((lead) => new Date(lead.updatedAt) >= weekStart);
+    const monthLeads = leads.filter((lead) => new Date(lead.updatedAt) >= monthStart);
+
+    // Conta finalizados (vendas)
+    const finalizadosHoje = todayLeads.filter((l) => l.stage === "FINALIZADO").length;
+    const finalizadosSemana = weekLeads.filter((l) => l.stage === "FINALIZADO").length;
+    const finalizadosMes = monthLeads.filter((l) => l.stage === "FINALIZADO").length;
+
+    return {
+      success: true,
+      data: {
+        leads: leads.map(serializeLead),
+        stats: {
+          totalLeads: leads.length,
+          leadsHoje: todayLeads.length,
+          leadsSemana: weekLeads.length,
+          leadsMes: monthLeads.length,
+          vendasHoje: finalizadosHoje,
+          vendasSemana: finalizadosSemana,
+          vendasMes: finalizadosMes,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao buscar meus leads:", error);
+    return { success: false, error: "Erro ao buscar leads" };
+  }
+}
+
+// ============================================
 // LISTAR LEADS
 // ============================================
 
@@ -361,12 +418,31 @@ export async function getLeads() {
         deletedAt: null,
         inPipeline: true,
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
     });
 
-    return { success: true, data: leads.map(serializeLead) };
+    return {
+      success: true,
+      data: leads.map((lead) => ({
+        ...serializeLead(lead),
+        owner: lead.user ? {
+          id: lead.user.id,
+          name: lead.user.name,
+          email: lead.user.email,
+        } : undefined,
+      })),
+    };
   } catch (error) {
     console.error("Erro ao buscar leads:", error);
     return { success: false, error: "Erro ao buscar leads" };

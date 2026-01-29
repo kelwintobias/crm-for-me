@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, GripVertical, Calendar, CalendarPlus } from "lucide-react";
+import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle } from "lucide-react";
 import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, PlainLead } from "@/types";
 import { ShoppingBag } from "lucide-react";
 import { getWhatsAppLink, formatPhone } from "@/lib/utils";
@@ -137,6 +137,14 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
           )}
         </div>
 
+        {/* Atendido por */}
+        {lead.owner && (
+          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-zinc-500">
+            <UserCircle className="w-3 h-3 shrink-0" />
+            <span>Atendido por <span className="text-zinc-400">{lead.owner.name || lead.owner.email.split('@')[0]}</span></span>
+          </div>
+        )}
+
         {/* Observações */}
         {lead.notes && (
           <p className="mt-2 text-xs text-zinc-500 line-clamp-2">{lead.notes}</p>
@@ -177,6 +185,7 @@ export const LeadCard = memo(LeadCardInner, (prev, next) => {
     prev.lead.addOns === next.lead.addOns &&
     prev.lead.contractHistory?.contractCount === next.lead.contractHistory?.contractCount &&
     prev.lead.appointmentInfo?.scheduledAt === next.lead.appointmentInfo?.scheduledAt &&
+    prev.lead.owner?.id === next.lead.owner?.id &&
     prev.isOverlay === next.isOverlay &&
     prev.isDragging === next.isDragging
   );

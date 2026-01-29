@@ -1,22 +1,43 @@
-import { getCurrentUser } from "@/app/actions/leads";
+import { getCurrentUser, getMyLeads } from "@/app/actions/leads";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { User, Shield, Mail, Calendar, Settings, ArrowLeft } from "lucide-react";
+import {
+    User,
+    Shield,
+    Mail,
+    Calendar,
+    Settings,
+    ArrowLeft,
+    Users,
+    TrendingUp,
+    CheckCircle,
+    Phone,
+    Clock,
+    MessageCircle,
+} from "lucide-react";
+import { STAGE_LABELS, SOURCE_LABELS } from "@/types";
+import { formatPhone, getWhatsAppLink } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
-    const user = await getCurrentUser();
+    const [user, myLeadsResult] = await Promise.all([
+        getCurrentUser(),
+        getMyLeads(),
+    ]);
 
     const isAdmin = user.role === "ADMIN";
     const initials = user.email ? user.email.slice(0, 2).toUpperCase() : "UP";
 
+    const myLeads = myLeadsResult.success ? myLeadsResult.data?.leads || [] : [];
+    const stats = myLeadsResult.success ? myLeadsResult.data?.stats : null;
+
     return (
         <div className="container mx-auto py-10 px-4">
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6">
                 {/* Botão Voltar */}
                 <Link
                     href="/"
@@ -74,6 +95,130 @@ export default async function ProfilePage() {
                                     </p>
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Estatísticas de Atendimento */}
+                    {stats && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <TrendingUp className="h-5 w-5" />
+                                    Meu Desempenho
+                                </CardTitle>
+                                <CardDescription>
+                                    Estatísticas dos leads atendidos por você
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                                        <div className="flex items-center gap-2 text-blue-400 mb-1">
+                                            <Users className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Hoje</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-blue-300">{stats.leadsHoje}</p>
+                                        <p className="text-xs text-blue-400/70">leads atendidos</p>
+                                    </div>
+                                    <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                                        <div className="flex items-center gap-2 text-purple-400 mb-1">
+                                            <Users className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Semana</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-purple-300">{stats.leadsSemana}</p>
+                                        <p className="text-xs text-purple-400/70">leads atendidos</p>
+                                    </div>
+                                    <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                        <div className="flex items-center gap-2 text-emerald-400 mb-1">
+                                            <CheckCircle className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Vendas Hoje</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-emerald-300">{stats.vendasHoje}</p>
+                                        <p className="text-xs text-emerald-400/70">finalizados</p>
+                                    </div>
+                                    <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                        <div className="flex items-center gap-2 text-amber-400 mb-1">
+                                            <CheckCircle className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Vendas Mês</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-amber-300">{stats.vendasMes}</p>
+                                        <p className="text-xs text-amber-400/70">finalizados</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Lista de Leads Recentes */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="h-5 w-5" />
+                                Meus Leads Recentes
+                            </CardTitle>
+                            <CardDescription>
+                                Últimos leads atendidos por você (máx. 50)
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {myLeads.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-8">
+                                    Você ainda não tem leads atribuídos.
+                                </p>
+                            ) : (
+                                <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                                    {myLeads.map((lead) => (
+                                        <div
+                                            key={lead.id}
+                                            className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-medium text-text-primary truncate">
+                                                        {lead.name}
+                                                    </h4>
+                                                    <Badge
+                                                        variant={
+                                                            lead.stage === "FINALIZADO"
+                                                                ? "default"
+                                                                : lead.stage === "PERDIDO"
+                                                                    ? "destructive"
+                                                                    : "secondary"
+                                                        }
+                                                        className="text-[10px]"
+                                                    >
+                                                        {STAGE_LABELS[lead.stage]}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <Phone className="h-3 w-3" />
+                                                        {formatPhone(lead.phone)}
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="h-3 w-3" />
+                                                        {new Date(lead.updatedAt).toLocaleDateString("pt-BR", {
+                                                            day: "2-digit",
+                                                            month: "2-digit",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                    </span>
+                                                    <span>{SOURCE_LABELS[lead.source]}</span>
+                                                </div>
+                                            </div>
+                                            <a
+                                                href={getWhatsAppLink(lead.phone)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-2 rounded-md bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white transition-colors ml-2"
+                                            >
+                                                <MessageCircle className="h-4 w-4" />
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

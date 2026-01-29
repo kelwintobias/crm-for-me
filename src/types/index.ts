@@ -38,10 +38,17 @@ export interface LeadAppointmentInfo {
   duration: number;
 }
 
+export interface LeadOwnerInfo {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
 export interface PlainLead extends Omit<Lead, 'value'> {
   value: number;
   contractHistory?: LeadContractHistory;
   appointmentInfo?: LeadAppointmentInfo;
+  owner?: LeadOwnerInfo;
 }
 
 export interface PlainUser extends Omit<User, 'commissionRate'> {
