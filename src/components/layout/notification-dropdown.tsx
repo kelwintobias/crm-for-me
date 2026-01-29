@@ -142,8 +142,10 @@ export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const loadNotifications = useCallback(async () => {
-    setIsLoading(true);
+  const loadNotifications = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const result = await getUpcomingAppointments();
       if (result.success && result.data) {
@@ -152,24 +154,29 @@ export function NotificationDropdown() {
     } catch (error) {
       console.error("Erro ao carregar notificações:", error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
-  // Carrega ao abrir
+  // Carrega ao abrir (com loading)
   useEffect(() => {
     if (isOpen || isMobileOpen) {
-      loadNotifications();
+      loadNotifications(true);
     }
   }, [isOpen, isMobileOpen, loadNotifications]);
 
-  // Carrega inicialmente para mostrar badge
+  // Carrega inicialmente para mostrar badge (com loading)
   useEffect(() => {
-    loadNotifications();
+    loadNotifications(true);
   }, [loadNotifications]);
 
-  // Atualiza com realtime
-  useRealtimeAppointments(loadNotifications);
+  // Atualiza com realtime (sem loading para evitar flicker)
+  const refreshNotifications = useCallback(() => {
+    loadNotifications(false);
+  }, [loadNotifications]);
+  useRealtimeAppointments(refreshNotifications);
 
   const todayCount = notifications.filter((n) => n.isToday).length;
   const totalCount = notifications.length;

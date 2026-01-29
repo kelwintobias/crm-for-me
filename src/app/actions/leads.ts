@@ -68,6 +68,7 @@ const updateLeadSchema = z.object({
   plan: z.enum(PLAN_TYPES).optional(),
   stage: z.enum(PIPELINE_STAGES).optional(),
   notes: z.string().nullable().optional(),
+  userId: z.string().uuid().optional(),
   // Campos do "Espelho da Planilha"
   email: z.string().email("Email invalido").nullable().optional().or(z.literal("")),
   contractDate: z.string().nullable().optional(),
@@ -205,6 +206,7 @@ export async function updateLead(data: {
   plan?: PlanType;
   stage?: PipelineStage;
   notes?: string | null;
+  userId?: string;
   // Campos do "Espelho da Planilha"
   email?: string | null;
   contractDate?: string | null;
@@ -247,6 +249,7 @@ export async function updateLead(data: {
       ...(validatedData.packageType !== undefined && { packageType: validatedData.packageType || null }),
       ...(validatedData.addOns !== undefined && { addOns: validatedData.addOns || null }),
       ...(validatedData.termsAccepted !== undefined && { termsAccepted: validatedData.termsAccepted }),
+      ...(validatedData.userId && { userId: validatedData.userId }),
     };
 
     // LOGICA DE CONSISTENCIA: Se o stage mudar para VENDIDO_*
@@ -264,10 +267,29 @@ export async function updateLead(data: {
     const lead = await prisma.lead.update({
       where: { id: validatedData.id },
       data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     revalidatePath("/");
-    return { success: true, data: serializeLead(lead) };
+    return {
+      success: true,
+      data: {
+        ...serializeLead(lead),
+        owner: lead.user ? {
+          id: lead.user.id,
+          name: lead.user.name,
+          email: lead.user.email,
+        } : undefined,
+      },
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };

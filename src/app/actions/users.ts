@@ -54,6 +54,36 @@ async function requireAdmin() {
 }
 
 // ===========================================
+// LISTAR USUÁRIOS PARA SELECT (qualquer autenticado)
+// ===========================================
+
+export async function listUsersForSelect() {
+  try {
+    const supabase = await createClient();
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+
+    if (!supabaseUser) {
+      return { success: false, error: "Não autenticado" };
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return { success: true, data: users };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao listar usuários",
+    };
+  }
+}
+
+// ===========================================
 // LISTAR TODOS OS USUÁRIOS
 // ===========================================
 

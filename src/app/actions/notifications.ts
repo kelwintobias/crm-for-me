@@ -2,7 +2,6 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "./leads";
-import { addHours, startOfDay, endOfDay, addDays } from "date-fns";
 
 export interface NotificationAppointment {
   id: string;
@@ -22,9 +21,32 @@ export async function getUpcomingAppointments(): Promise<{
   try {
     const user = await getCurrentUser();
 
+    // Offset do Brasil (UTC-3)
+    const BRT_OFFSET = 3;
     const now = new Date();
-    const todayStart = startOfDay(now);
-    const tomorrowEnd = endOfDay(addDays(now, 1));
+
+    // Hoje 00:00 BRT = 03:00 UTC
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(BRT_OFFSET, 0, 0, 0);
+    // Se já passou da meia-noite BRT (03:00 UTC), todayStart está correto
+    // Se não, todayStart está um dia à frente, precisa voltar
+    if (now < todayStart) {
+      todayStart.setUTCDate(todayStart.getUTCDate() - 1);
+    }
+
+    // Hoje 23:59:59 BRT = 02:59:59 UTC do dia seguinte
+    const todayEnd = new Date(todayStart);
+    todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+    todayEnd.setUTCHours(BRT_OFFSET - 1, 59, 59, 999);
+
+    // Amanhã 00:00 BRT
+    const tomorrowStart = new Date(todayEnd);
+    tomorrowStart.setUTCMilliseconds(1);
+
+    // Amanhã 23:59:59 BRT = 02:59:59 UTC do dia depois de amanhã
+    const tomorrowEnd = new Date(todayStart);
+    tomorrowEnd.setUTCDate(tomorrowEnd.getUTCDate() + 2);
+    tomorrowEnd.setUTCHours(BRT_OFFSET - 1, 59, 59, 999);
 
     // Busca agendamentos de hoje e amanhã
     const appointments = await prisma.appointment.findMany({
@@ -48,9 +70,6 @@ export async function getUpcomingAppointments(): Promise<{
         scheduledAt: "asc",
       },
     });
-
-    const todayEnd = endOfDay(now);
-    const tomorrowStart = startOfDay(addDays(now, 1));
 
     const notifications: NotificationAppointment[] = appointments.map((apt) => {
       const aptDate = new Date(apt.scheduledAt);

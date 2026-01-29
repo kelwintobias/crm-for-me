@@ -34,6 +34,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { updateLead, deleteLead } from "@/app/actions/leads";
+import { listUsersForSelect } from "@/app/actions/users";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -109,6 +110,8 @@ export function EditLeadModal({
   const [source, setSource] = useState<LeadSource>("INSTAGRAM");
   const [plan, setPlan] = useState<PlanType>("INDEFINIDO");
   const [notes, setNotes] = useState("");
+  const [userId, setUserId] = useState("");
+  const [usersList, setUsersList] = useState<{ id: string; name: string | null }[]>([]);
 
   // Campos da aba "Dados da Venda" (Espelho da Planilha)
   const [packageType, setPackageType] = useState("");
@@ -129,6 +132,7 @@ export function EditLeadModal({
       setSource(lead.source);
       setPlan(lead.plan);
       setNotes(lead.notes || "");
+      setUserId(lead.owner?.id || "");
 
       // Aba Dados da Venda
       setPackageType(lead.packageType || "");
@@ -143,6 +147,16 @@ export function EditLeadModal({
       setActiveTab("geral");
     }
   }, [lead]);
+
+  useEffect(() => {
+    if (open && usersList.length === 0) {
+      listUsersForSelect().then((result) => {
+        if (result.success && result.data) {
+          setUsersList(result.data);
+        }
+      });
+    }
+  }, [open, usersList.length]);
 
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -177,6 +191,7 @@ export function EditLeadModal({
       source,
       plan,
       notes: notes || null,
+      userId: userId || undefined,
       // Aba Dados da Venda
       packageType: packageType || null,
       addOns: addOns || null,
@@ -467,6 +482,34 @@ export function EditLeadModal({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="edit-userId"
+                  className="text-sm font-medium text-text-secondary"
+                >
+                  Atendido por
+                </Label>
+                <Select
+                  value={userId}
+                  onValueChange={setUserId}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
+                    <SelectValue placeholder="Selecione o atendente..." />
+                  </SelectTrigger>
+                  <SelectContent className="glass-strong border-white/10">
+                    {usersList.map((u) => (
+                      <SelectItem key={u.id} value={u.id} className="focus:bg-brand-accent/20">
+                        <span className="flex items-center gap-2">
+                          <User className="w-3.5 h-3.5 text-text-tertiary" />
+                          {u.name || u.id}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
