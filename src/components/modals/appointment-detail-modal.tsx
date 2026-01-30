@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -39,12 +40,10 @@ import {
   rescheduleAppointment,
   cancelAppointment,
   getAppointmentHistory,
-  getAvailableSlots,
 } from "@/app/actions/appointments";
-import { TimeSlot } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn, formatPhone } from "@/lib/utils";
+import { formatPhone, toBRT } from "@/lib/utils";
 
 interface AppointmentDetailModalProps {
   appointmentId: string | null;
@@ -91,9 +90,7 @@ export function AppointmentDetailModal({
 
   // Estados de remarcação
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("");
 
   const loadAppointmentDetails = useCallback(async () => {
     if (!appointmentId) return;
@@ -128,24 +125,6 @@ export function AppointmentDetailModal({
     }
   }, [appointmentId]);
 
-  const loadTimeSlots = useCallback(async () => {
-    if (!selectedDate) return;
-
-    setIsLoadingSlots(true);
-    try {
-      const dateStr = format(selectedDate, "yyyy-MM-dd");
-      const result = await getAvailableSlots(dateStr);
-
-      if (result.success && result.data) {
-        setTimeSlots(result.data);
-      }
-    } catch {
-      toast.error("Erro ao carregar horários");
-    } finally {
-      setIsLoadingSlots(false);
-    }
-  }, [selectedDate]);
-
   useEffect(() => {
     if (open && appointmentId) {
       loadAppointmentDetails();
@@ -156,29 +135,25 @@ export function AppointmentDetailModal({
       setHistory([]);
       setIsRescheduling(false);
       setSelectedDate(undefined);
-      setTimeSlots([]);
-      setSelectedSlot(null);
+      setSelectedTime("");
     }
   }, [open, appointmentId, loadAppointmentDetails, loadHistory]);
 
-  // Carregar horários quando selecionar nova data
-  useEffect(() => {
-    if (isRescheduling && selectedDate) {
-      loadTimeSlots();
-    }
-  }, [selectedDate, isRescheduling, loadTimeSlots]);
-
   const handleReschedule = async () => {
-    if (!appointmentId || !selectedSlot) {
+    if (!appointmentId || !selectedDate || !selectedTime) {
       toast.error("Selecione uma nova data e horário");
       return;
     }
+
+    const [hours, minutes] = selectedTime.split(":").map(Number);
+    const scheduledAt = new Date(selectedDate);
+    scheduledAt.setHours(hours, minutes, 0, 0);
 
     setIsLoading(true);
     try {
       const result = await rescheduleAppointment({
         id: appointmentId,
-        scheduledAt: selectedSlot.scheduledAt,
+        scheduledAt: scheduledAt.toISOString(),
       });
 
       if (result.success) {
@@ -224,16 +199,14 @@ export function AppointmentDetailModal({
   const isDateDisabled = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (date < today) return true;
-    const day = date.getDay();
-    return day === 0 || day === 6;
+    return date < today;
   };
 
   if (!appointment) {
     return null;
   }
 
-  const scheduledDate = new Date(appointment.scheduledAt);
+  const scheduledDate = toBRT(appointment.scheduledAt);
   const endTime = new Date(scheduledDate.getTime() + appointment.duration * 60000);
 
   return (
@@ -277,37 +250,17 @@ export function AppointmentDetailModal({
 
               {selectedDate && (
                 <div className="space-y-4">
-                  <Label className="flex items-center gap-2">
+                  <Label htmlFor="reschedule-time" className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     Novo Horário
                   </Label>
-
-                  {isLoadingSlots ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-2">
-                      {timeSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          onClick={() => slot.available && setSelectedSlot(slot)}
-                          disabled={!slot.available}
-                          className={cn(
-                            "p-3 rounded-md text-sm font-medium transition-all",
-                            "border disabled:cursor-not-allowed",
-                            slot.available
-                              ? selectedSlot?.time === slot.time
-                                ? "bg-brand-accent text-text-dark border-brand-accent"
-                                : "bg-brand-card text-text-primary border-white/[0.08] hover:border-brand-accent/50"
-                              : "bg-brand-card/50 text-text-tertiary border-white/[0.04] opacity-50"
-                          )}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <Input
+                    id="reschedule-time"
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="w-40"
+                  />
                 </div>
               )}
             </div>
@@ -393,7 +346,7 @@ export function AppointmentDetailModal({
                 </Button>
                 <Button
                   onClick={handleReschedule}
-                  disabled={!selectedSlot || isLoading}
+                  disabled={!selectedDate || !selectedTime || isLoading}
                 >
                   {isLoading ? (
                     <>

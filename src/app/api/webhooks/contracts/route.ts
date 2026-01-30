@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import {
     calculateTotalValue,
     PACKAGE_LABELS,
-    ADDON_LABELS,
-    ADDON_PRICES
+    ADDON_LABELS
 } from "@/lib/contract-constants";
+import { broadcastTableChange } from "@/lib/realtime/broadcast";
 
 // Mapeamento de ContractPackage para PlanType
 // Isso garante que o plano do lead reflita o pacote do contrato
@@ -219,10 +219,12 @@ export async function POST(request: Request) {
 
         // 5. Atualização de Lead (se existir)
         // BUG-003 FIX: Busca primeiro por telefone exato, depois por variações comuns
+        // Filtra por deletedAt: null para não encontrar leads excluídos
         let leadUpdated = false;
         let lead = await prisma.lead.findFirst({
             where: {
-                phone: normalizedPhone, // Busca exata primeiro
+                phone: normalizedPhone,
+                deletedAt: null,
             },
         });
 
@@ -243,6 +245,7 @@ export async function POST(request: Request) {
             lead = await prisma.lead.findFirst({
                 where: {
                     phone: { in: phoneVariations },
+                    deletedAt: null,
                 },
             });
         }
@@ -270,6 +273,8 @@ export async function POST(request: Request) {
 
         // Revalidar cache para atualizar a UI
         revalidatePath("/");
+        await broadcastTableChange("contracts", "insert");
+        if (leadUpdated) await broadcastTableChange("leads", "update");
 
         // Log sucesso com detalhes da ação executada
         const actionDetails = {
@@ -330,7 +335,7 @@ export async function POST(request: Request) {
                 status: "ERROR",
                 error: error instanceof Error ? error.message : "Unknown error",
             }
-        }).catch(() => {}); // Não falhar se o log falhar
+        }).catch(() => { }); // Não falhar se o log falhar
 
         return NextResponse.json(
             { success: false, error: error instanceof Error ? error.message : "Erro interno" },

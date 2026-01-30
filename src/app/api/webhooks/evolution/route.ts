@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { broadcastTableChange } from "@/lib/realtime/broadcast";
 
 // Webhook para Evolution API (WhatsApp) - Instância "julia"
 // Cria ou reativa leads quando enviam mensagem.
@@ -60,9 +61,9 @@ export async function POST(req: NextRequest) {
         // TODO: Validar instância se necessário (ex: if (body.instance !== "julia"))
         // Por enquanto aceita de qualquer instância configurada no webhook
 
-        // 5. Verificar se o Lead já existe no banco
+        // 5. Verificar se o Lead já existe no banco (apenas leads ativos)
         const existingLead = await prisma.lead.findFirst({
-            where: { phone },
+            where: { phone, deletedAt: null },
         });
 
         let leadId = "";
@@ -169,6 +170,7 @@ export async function POST(req: NextRequest) {
 
         // Revalidar Cache para UI atualizar em tempo real (Server Actions/RSC)
         revalidatePath("/");
+        await broadcastTableChange("leads", action === "created" ? "insert" : "update");
 
         // Logar Sucesso no WebhookLog (para debug futuro)
         // Salvamos apenas os dados essenciais para não lotar o banco com o payload gigante da Evolution

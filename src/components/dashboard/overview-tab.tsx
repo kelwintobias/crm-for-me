@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MonthSelector } from "./month-selector";
@@ -60,24 +60,25 @@ export function OverviewTab({
     }, [contracts, isSeller, user.id]);
 
     // 2. Filter Data by Period (Month Selection)
-    const isDateInSelectedMonths = (date: Date | string) => {
+    // 2. Filter Data by Period (Month Selection)
+    const isDateInSelectedMonths = useCallback((date: Date | string) => {
         if (selectedMonths.length === 0) return true;
         const dateObj = typeof date === "string" ? new Date(date) : date;
         const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
         return selectedMonths.includes(monthKey);
-    };
+    }, [selectedMonths]);
 
     const filteredLeads = useMemo(() => {
         return relevantLeads.filter(lead => isDateInSelectedMonths(lead.createdAt));
-    }, [relevantLeads, selectedMonths]);
+    }, [relevantLeads, isDateInSelectedMonths]);
 
     const filteredContracts = useMemo(() => {
         return relevantContracts.filter(contract => isDateInSelectedMonths(contract.contractDate));
-    }, [relevantContracts, selectedMonths]);
+    }, [relevantContracts, isDateInSelectedMonths]);
 
     const filteredAppointments = useMemo(() => {
         return relevantAppointments.filter(apt => isDateInSelectedMonths(apt.scheduledAt));
-    }, [relevantAppointments, selectedMonths]);
+    }, [relevantAppointments, isDateInSelectedMonths]);
 
 
     // 3. Calculate Metrics (Copied/Adapted from dashboard-view.tsx logic)
@@ -231,7 +232,7 @@ export function OverviewTab({
             appointments: filteredAppointments, // Passar raw para o useEffect
             relevantLeads: relevantLeads // Passar raw para o useEffect
         };
-    }, [filteredLeads, filteredAppointments, filteredContracts, selectedMonths, relevantLeads]);
+    }, [filteredLeads, filteredAppointments, filteredContracts, relevantLeads, isDateInSelectedMonths]);
 
     // Calcular estatísticas diárias APENAS no cliente para evitar hydration mismatch
     const [dailyStats, setDailyStats] = useState({

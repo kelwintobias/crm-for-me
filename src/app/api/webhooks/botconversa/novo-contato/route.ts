@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { broadcastTableChange } from "@/lib/realtime/broadcast";
 
 // Webhook para novos contatos do BotConversa
 // Cria o lead na coluna "Novo Lead" quando qualquer pessoa envia mensagem
@@ -76,9 +77,9 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Verificar se lead já existe pelo telefone
+        // Verificar se lead já existe pelo telefone (apenas leads ativos)
         const existingLead = await prisma.lead.findFirst({
-            where: { phone },
+            where: { phone, deletedAt: null },
         });
 
         if (existingLead) {
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
 
         // Revalidar cache para atualizar a UI
         revalidatePath("/");
+        await broadcastTableChange("leads", "insert");
 
         await prisma.webhookLog.create({
             data: {

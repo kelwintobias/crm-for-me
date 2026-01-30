@@ -47,7 +47,8 @@ async function getCurrentUser() {
 }
 
 // Verifica se horário é válido (permite qualquer horário e dia)
-function isWithinBusinessHours(date: Date): boolean {
+// Verifica se horário é válido (permite qualquer horário e dia)
+function isWithinBusinessHours(_date: Date): boolean {
   // Permite agendamento em qualquer horário e dia da semana
   // Permite datas no passado (conforme solicitado)
   return true;
@@ -81,21 +82,6 @@ export async function createAppointment(data: unknown) {
 
     if (!lead) {
       return { success: false, error: "Lead não encontrado" };
-    }
-
-    // BUG-002 FIX: Verifica se o lead já possui um agendamento ativo
-    const existingAppointment = await prisma.appointment.findFirst({
-      where: {
-        leadId: validated.leadId,
-        status: "SCHEDULED",
-      },
-    });
-
-    if (existingAppointment) {
-      return {
-        success: false,
-        error: "Este lead já possui um agendamento ativo. Cancele ou conclua o agendamento existente primeiro."
-      };
     }
 
     // Cria agendamento e atualiza stage do lead em uma transação
@@ -196,7 +182,7 @@ export async function rescheduleAppointment(data: unknown) {
       await tx.appointmentHistory.create({
         data: {
           appointmentId: apt.id,
-          userId: user.id,
+          userId: user.id, // user is used here
           action: "RESCHEDULED",
           previousValue: JSON.stringify({
             scheduledAt: existing.scheduledAt.toISOString(),

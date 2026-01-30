@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MonthSelector } from "./month-selector";
@@ -30,16 +30,16 @@ export function FinancialTab({
 }: FinancialTabProps) {
 
     // Helper to check date
-    const isDateInSelectedMonths = (date: Date | string) => {
+    const isDateInSelectedMonths = useCallback((date: Date | string) => {
         if (selectedMonths.length === 0) return true;
         const dateObj = typeof date === "string" ? new Date(date) : date;
         const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
         return selectedMonths.includes(monthKey);
-    };
+    }, [selectedMonths]);
 
     const filteredContractsData = useMemo(() => {
         return contracts.filter(contract => isDateInSelectedMonths(contract.contractDate));
-    }, [contracts, selectedMonths]);
+    }, [contracts, isDateInSelectedMonths]);
 
     const filteredContractMetrics = useMemo(() => {
         const filtered = filteredContractsData;
@@ -104,7 +104,6 @@ export function FinancialTab({
         const revenueEvolution = Array.from(monthlyMap.entries())
             .map(([month, data]) => ({ month, ...data }))
             .sort((a, b) => {
-                const dateA = new Date(a.month.replace("/", " 20" /* hacky parser if using MMM/yy */));
                 // Better: relies on implicit sort or fix later.
                 // Actually, date-fns parse might be needed if exact order matters.
                 // Given format MMM/yy (e.g. Jan/24), new Date("Jan 2024") works in JS.
@@ -174,7 +173,7 @@ export function FinancialTab({
                 } : null,
             },
         };
-    }, [contracts, contractMetrics, filteredContractsData]);
+    }, [contractMetrics, filteredContractsData]);
 
 
     return (

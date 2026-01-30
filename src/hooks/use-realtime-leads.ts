@@ -3,66 +3,54 @@
 import { useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PlainLead } from "@/types";
-import { useRefreshManager } from "./use-refresh-manager";
+
+const CHANNEL_NAME = "crm-webhook-signals";
+const DEBOUNCE_MS = 300;
+const POLL_INTERVAL_MS = 15000; // 15 segundos
 
 type SetLeads = React.Dispatch<React.SetStateAction<PlainLead[]>>;
 
 export function useRealtimeLeads(setLeads: SetLeads, onRefresh?: () => void) {
   const supabaseRef = useRef(createClient());
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Callback memoizado para o refresh manager
-  const handleRefresh = useCallback(() => {
-    if (onRefresh) {
+  const debouncedRefresh = useCallback(() => {
+    if (!onRefresh) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      console.log("[Realtime] Broadcast: refreshing leads");
       onRefresh();
-    }
+    }, DEBOUNCE_MS);
   }, [onRefresh]);
 
-  // Usa o refresh manager centralizado para polling
-  useRefreshManager("leads", handleRefresh, { enabled: !!onRefresh });
-
   useEffect(() => {
+    if (!onRefresh) return;
+
     const supabase = supabaseRef.current;
 
-    // Realtime subscription para updates otimistas locais
+    // Broadcast subscription - recebe sinais dos webhooks
     const channel = supabase
-      .channel("leads-realtime-local")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "leads" },
-        (payload) => {
-          console.log("[Realtime] Lead change detected:", payload.eventType);
-
-          if (payload.eventType === "INSERT") {
-            const newLead = payload.new as PlainLead;
-            // Só adiciona se não for soft deleted
-            if (!newLead.deletedAt) {
-              setLeads((prev) => {
-                // Evita duplicatas
-                if (prev.some((l) => l.id === newLead.id)) return prev;
-                return [newLead, ...prev];
-              });
-            }
-          } else if (payload.eventType === "UPDATE") {
-            const updated = payload.new as PlainLead;
-            if (updated.deletedAt) {
-              // Soft delete - remove da lista
-              setLeads((prev) => prev.filter((l) => l.id !== updated.id));
-            } else {
-              setLeads((prev) =>
-                prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
-              );
-            }
-          } else if (payload.eventType === "DELETE") {
-            setLeads((prev) => prev.filter((l) => l.id !== payload.old.id));
-          }
+      .channel(CHANNEL_NAME)
+      .on("broadcast", { event: "db-change" }, (message) => {
+        const { table } = message.payload || {};
+        if (table === "leads") {
+          console.log("[Realtime] Broadcast: lead change detected");
+          debouncedRefresh();
         }
-      )
+      })
       .subscribe((status) => {
-        console.log("[Realtime] Leads subscription status:", status);
+        console.log("[Realtime] Broadcast subscription status:", status);
       });
+
+    // Polling fallback (15s)
+    const pollInterval = setInterval(() => {
+      onRefresh();
+    }, POLL_INTERVAL_MS);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [setLeads]);
+  }, [onRefresh, debouncedRefresh]);
 }

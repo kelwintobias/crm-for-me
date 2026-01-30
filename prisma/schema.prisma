@@ -85,6 +85,12 @@ enum DebtorStatus {
   PAGO
 }
 
+enum LeadTemperature {
+  QUENTE
+  MORNO
+  FRIO
+}
+
 // --------------------------------------
 // MODELS
 // --------------------------------------
@@ -130,6 +136,7 @@ model Lead {
   value     Decimal       @default(0) @db.Decimal(10, 2)
 
   stage     PipelineStage @default(NOVO_LEAD)
+  temperature LeadTemperature?
   lostReason String?
   notes     String?  @db.Text
 

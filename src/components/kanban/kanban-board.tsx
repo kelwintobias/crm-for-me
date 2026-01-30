@@ -7,10 +7,11 @@ import type { PipelineStage } from "@prisma/client";
 import { KanbanColumn } from "./kanban-column";
 import { LeadCard } from "./lead-card";
 import { EditLeadModal } from "../modals/edit-lead-modal";
-import { updateLeadStage } from "@/app/actions/leads";
+import { updateLeadStage, updateLeadTemperature } from "@/app/actions/leads";
 import { toast } from "sonner";
 import { PlainLead } from "@/types";
 import { Users, Sparkles } from "lucide-react";
+import { toBRT } from "@/lib/utils";
 import { LostLeadReasonModal } from "../modals/lost-lead-reason-modal";
 import { QuickScheduleModal } from "../modals/quick-schedule-modal";
 import { useRealtimeLeads } from "@/hooks/use-realtime-leads";
@@ -130,11 +131,12 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
           map[lead.stage].push(lead);
         }
       }
-      // Filtra coluna AGENDADO para mostrar apenas agendamentos de hoje
+      // Filtra coluna AGENDADO para mostrar apenas agendamentos de hoje (BRT)
       else if (lead.stage === "AGENDADO") {
         if (lead.appointmentInfo?.scheduledAt) {
-          const aptDate = new Date(lead.appointmentInfo.scheduledAt);
-          if (aptDate.toDateString() === now.toDateString()) {
+          const aptDateBRT = toBRT(lead.appointmentInfo.scheduledAt);
+          const nowBRT = toBRT(now);
+          if (aptDateBRT.toDateString() === nowBRT.toDateString()) {
             map.AGENDADO.push(lead);
           }
         } else {
@@ -152,12 +154,22 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     });
 
     // Ordena todas as colunas por updatedAt (mais recente primeiro)
+    // Exceto AGENDADO: ordena por proximidade do horário agendado (mais próximo primeiro)
     for (const stage of STAGES) {
-      map[stage].sort((a, b) => {
-        const dateA = new Date(a.updatedAt).getTime();
-        const dateB = new Date(b.updatedAt).getTime();
-        return dateB - dateA;
-      });
+      if (stage === "AGENDADO") {
+        const nowTime = now.getTime();
+        map[stage].sort((a, b) => {
+          const timeA = a.appointmentInfo ? Math.abs(new Date(a.appointmentInfo.scheduledAt).getTime() - nowTime) : Infinity;
+          const timeB = b.appointmentInfo ? Math.abs(new Date(b.appointmentInfo.scheduledAt).getTime() - nowTime) : Infinity;
+          return timeA - timeB;
+        });
+      } else {
+        map[stage].sort((a, b) => {
+          const dateA = new Date(a.updatedAt).getTime();
+          const dateB = new Date(b.updatedAt).getTime();
+          return dateB - dateA;
+        });
+      }
     }
 
     return map;
@@ -175,6 +187,29 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
   const handleScheduleClick = useCallback((lead: PlainLead) => {
     setLeadToSchedule(lead);
     setIsScheduleModalOpen(true);
+  }, []);
+
+  // Handler de temperatura - update otimista
+  const handleTemperatureChange = useCallback(async (lead: PlainLead, temperature: string | null) => {
+    // Otimista
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === lead.id ? { ...l, temperature: temperature as PlainLead["temperature"] } : l
+      )
+    );
+
+    try {
+      const result = await updateLeadTemperature(lead.id, temperature as PlainLead["temperature"]);
+      if (!result.success) throw new Error("Failed");
+    } catch {
+      // Reverte
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === lead.id ? { ...l, temperature: lead.temperature } : l
+        )
+      );
+      toast.error("Erro ao atualizar temperatura");
+    }
   }, []);
 
   // PERF: Registra ref de coluna
@@ -408,6 +443,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
             onDragStart={handleDragStart}
             registerRef={registerColumnRef}
             onScheduleClick={handleScheduleClick}
+            onTemperatureChange={handleTemperatureChange}
           />
         ))}
       </div>

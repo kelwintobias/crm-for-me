@@ -73,14 +73,7 @@ export function useRefreshManager(
     // Canal único para todas as tabelas
     const channel = supabase
       .channel("crm-realtime-unified")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "leads" },
-        (payload) => {
-          console.log("[RefreshManager] Lead change:", payload.eventType);
-          triggerCallbacks("leads");
-        }
-      )
+      // Leads agora usa broadcast (use-realtime-leads.ts) - removido postgres_changes para leads
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "appointments" },

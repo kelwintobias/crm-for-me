@@ -20,12 +20,12 @@ import {
 import { getUpcomingAppointments, NotificationAppointment } from "@/app/actions/notifications";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getWhatsAppLink, formatPhone } from "@/lib/utils";
+import { getWhatsAppLink, formatPhone, toBRT } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useRealtimeAppointments } from "@/hooks/use-realtime-appointments";
 
 function NotificationItem({ notification }: { notification: NotificationAppointment }) {
-  const scheduledDate = new Date(notification.scheduledAt);
+  const scheduledDate = toBRT(notification.scheduledAt);
 
   return (
     <div

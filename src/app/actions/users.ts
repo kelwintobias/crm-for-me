@@ -106,9 +106,9 @@ export async function listUsers() {
 
     return { success: true, data: users };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao listar usuários" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao listar usuários"
     };
   }
 }
@@ -162,9 +162,9 @@ export async function createUser(formData: FormData) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };
     }
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao criar usuário" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao criar usuário"
     };
   }
 }
@@ -191,9 +191,9 @@ export async function updateUserTabs(userId: string, allowedTabs: string[]) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };
     }
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao atualizar permissões" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao atualizar permissões"
     };
   }
 }
@@ -206,7 +206,7 @@ export async function forcePasswordReset(userId: string) {
   try {
     await requireAdmin();
 
-    const user = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: { mustChangePassword: true },
     });
@@ -215,9 +215,9 @@ export async function forcePasswordReset(userId: string) {
 
     return { success: true, message: "Usuário deverá alterar a senha no próximo login" };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao forçar redefinição de senha" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao forçar redefinição de senha"
     };
   }
 }
@@ -262,9 +262,9 @@ export async function updateOwnPassword(formData: FormData) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors[0].message };
     }
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao atualizar senha" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao atualizar senha"
     };
   }
 }
@@ -312,9 +312,9 @@ export async function getCurrentUserWithPermissions() {
 
     return { success: true, data: user };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao buscar usuário" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao buscar usuário"
     };
   }
 }
@@ -357,9 +357,9 @@ export async function deleteUser(userId: string) {
 
     return { success: true, message: "Usuário deletado com sucesso" };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Erro ao deletar usuário" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erro ao deletar usuário"
     };
   }
 }

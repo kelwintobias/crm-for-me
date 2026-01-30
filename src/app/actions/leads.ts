@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { LeadSource, PlanType, PipelineStage, Lead } from "@prisma/client";
+import type { LeadSource, PlanType, PipelineStage, LeadTemperature, Lead } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
 // ============================================
@@ -59,6 +59,7 @@ const createLeadSchema = z.object({
 
 // BUG-006 FIX: Incluir PERDIDO no schema de update
 const PIPELINE_STAGES = ["NOVO_LEAD", "EM_NEGOCIACAO", "AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "PERDIDO", "FINALIZADO"] as const;
+const LEAD_TEMPERATURES = ["QUENTE", "MORNO", "FRIO"] as const;
 
 const updateLeadSchema = z.object({
   id: z.string().uuid(),
@@ -77,6 +78,7 @@ const updateLeadSchema = z.object({
   packageType: z.string().nullable().optional(),
   addOns: z.string().nullable().optional(),
   termsAccepted: z.boolean().optional(),
+  temperature: z.enum(LEAD_TEMPERATURES).nullable().optional(),
 });
 
 // ============================================
@@ -134,7 +136,7 @@ export async function createLeadService(input: CreateLeadInput) {
     try {
       const user = await getCurrentUser();
       userId = user.id;
-    } catch (error) {
+    } catch {
       throw new Error("UserId obrigatório ou usuário não autenticado");
     }
   }
@@ -215,6 +217,7 @@ export async function updateLead(data: {
   packageType?: string | null;
   addOns?: string | null;
   termsAccepted?: boolean;
+  temperature?: LeadTemperature | null;
 }) {
   try {
     await getCurrentUser();
@@ -249,6 +252,7 @@ export async function updateLead(data: {
       ...(validatedData.packageType !== undefined && { packageType: validatedData.packageType || null }),
       ...(validatedData.addOns !== undefined && { addOns: validatedData.addOns || null }),
       ...(validatedData.termsAccepted !== undefined && { termsAccepted: validatedData.termsAccepted }),
+      ...(validatedData.temperature !== undefined && { temperature: validatedData.temperature }),
       ...(validatedData.userId && { userId: validatedData.userId }),
     };
 
@@ -335,6 +339,34 @@ export async function updateLeadStage(id: string, stage: PipelineStage, lostReas
     return { success: true, data: serializeLead(lead) };
   } catch {
     return { success: false, error: "Erro ao mover lead" };
+  }
+}
+
+// ============================================
+// ATUALIZAR TEMPERATURA DO LEAD (Quick action)
+// ============================================
+
+export async function updateLeadTemperature(id: string, temperature: LeadTemperature | null) {
+  try {
+    await getCurrentUser();
+
+    const existingLead = await prisma.lead.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!existingLead) {
+      return { success: false, error: "Lead nao encontrado" };
+    }
+
+    const lead = await prisma.lead.update({
+      where: { id },
+      data: { temperature },
+    });
+
+    revalidatePath("/");
+    return { success: true, data: serializeLead(lead) };
+  } catch {
+    return { success: false, error: "Erro ao atualizar temperatura" };
   }
 }
 

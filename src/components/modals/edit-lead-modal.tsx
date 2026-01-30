@@ -113,6 +113,7 @@ export function EditLeadModal({
   const [source, setSource] = useState<LeadSource>("INSTAGRAM");
   const [plan, setPlan] = useState<PlanType>("INDEFINIDO");
   const [notes, setNotes] = useState("");
+  const [temperature, setTemperature] = useState("");
   const [userId, setUserId] = useState("");
   const [usersList, setUsersList] = useState<{ id: string; name: string | null }[]>([]);
 
@@ -135,6 +136,7 @@ export function EditLeadModal({
       setSource(lead.source);
       setPlan(lead.plan);
       setNotes(lead.notes || "");
+      setTemperature(lead.temperature || "NONE");
       setUserId(lead.owner?.id || "");
 
       // Aba Dados da Venda
@@ -194,6 +196,7 @@ export function EditLeadModal({
       source,
       plan,
       notes: notes || null,
+      temperature: temperature === "NONE" ? null : temperature as "QUENTE" | "MORNO" | "FRIO",
       userId: userId || undefined,
       // Aba Dados da Venda
       packageType: packageType || null,
@@ -501,6 +504,43 @@ export function EditLeadModal({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-text-secondary">
+                  Temperatura
+                </Label>
+                <Select value={temperature} onValueChange={setTemperature} disabled={loading}>
+                  <SelectTrigger className="h-11 bg-white/[0.03] border-white/10 focus:border-brand-accent/50">
+                    <SelectValue placeholder="Sem tag" />
+                  </SelectTrigger>
+                  <SelectContent className="glass-strong border-white/10">
+                    <SelectItem value="NONE" className="focus:bg-brand-accent/20">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-gray-500" />
+                        Sem tag
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="QUENTE" className="focus:bg-brand-accent/20">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        Quente
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="MORNO" className="focus:bg-brand-accent/20">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        Morno
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="FRIO" className="focus:bg-brand-accent/20">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        Frio
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

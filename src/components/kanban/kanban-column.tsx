@@ -15,6 +15,7 @@ interface KanbanColumnProps {
   onDragStart: (lead: PlainLead, e: React.MouseEvent | React.TouchEvent) => void;
   registerRef: (stage: PipelineStage, el: HTMLDivElement | null) => void;
   onScheduleClick?: (lead: PlainLead) => void;
+  onTemperatureChange?: (lead: PlainLead, temperature: string | null) => void;
 }
 
 // PERF: Config estática fora do componente
@@ -68,7 +69,7 @@ const COLUMN_CONFIG: Record<PipelineStage, {
   },
 };
 
-function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef, onScheduleClick }: KanbanColumnProps) {
+function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef, onScheduleClick, onTemperatureChange }: KanbanColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
   const config = COLUMN_CONFIG[stage];
 
@@ -150,6 +151,7 @@ function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef
             onClick={getClickHandler(lead)}
             onDragStart={onDragStart}
             onScheduleClick={onScheduleClick}
+            onTemperatureChange={onTemperatureChange}
           />
         ))}
 
@@ -191,6 +193,7 @@ export const KanbanColumn = memo(KanbanColumnInner, (prevProps, nextProps) => {
   if (prevProps.onLeadClick !== nextProps.onLeadClick) return false;
   if (prevProps.onDragStart !== nextProps.onDragStart) return false;
   if (prevProps.onScheduleClick !== nextProps.onScheduleClick) return false;
+  if (prevProps.onTemperatureChange !== nextProps.onTemperatureChange) return false;
   if (prevProps.leads.length !== nextProps.leads.length) return false;
 
   // Compara referencia dos objetos (muito mais rapido que deep equals)

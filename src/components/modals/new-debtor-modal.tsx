@@ -128,96 +128,97 @@ export function NewDebtorModal({ open, onOpenChange, people = [] }: NewDebtorMod
             } else {
                 toast.error(result.error || "Erro ao registrar");
             }
-        } catch (_error) {
+        } catch {
             toast.error("Erro ao registrar");
         } finally {
             setIsLoading(false);
         }
     }
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Registrar Novo Devedor</DialogTitle>
-                </DialogHeader>
+                </DialogHeader >
 
                 {/* Seleção de Pessoa */}
-                {!selectedPerson ? (
-                    <div className="mb-4 space-y-2">
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar cliente por nome ou telefone..."
-                                className="pl-9"
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setIsSearching(true);
-                                }}
-                                onFocus={() => setIsSearching(true)}
-                            />
-                        </div>
+                {
+                    !selectedPerson ? (
+                        <div className="mb-4 space-y-2">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Buscar cliente por nome ou telefone..."
+                                    className="pl-9"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setIsSearching(true);
+                                    }}
+                                    onFocus={() => setIsSearching(true)}
+                                />
+                            </div>
 
-                        {/* Lista de resultados (só mostra se estiver buscando ou se houver query) */}
-                        {isSearching && (
-                            <div className="border border-white/[0.1] rounded-md max-h-[200px] overflow-y-auto bg-zinc-950/50">
-                                {filteredPeople.length === 0 ? (
-                                    <div className="p-3 text-sm text-center text-muted-foreground">
-                                        Nenhum cliente encontrado.
-                                    </div>
-                                ) : (
-                                    filteredPeople.map((person) => (
-                                        <div
-                                            key={person.id}
-                                            className="p-2 hover:bg-white/[0.05] cursor-pointer flex items-center justify-between border-b border-white/[0.05] last:border-0"
-                                            onClick={() => handleSelectPerson(person)}
-                                        >
-                                            <div>
-                                                <p className="font-medium text-sm">{person.name}</p>
-                                                <p className="text-xs text-muted-foreground">{formatPhone(person.phone)}</p>
-                                            </div>
-                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                                                <User className="h-3 w-3" />
-                                            </Button>
+                            {/* Lista de resultados (só mostra se estiver buscando ou se houver query) */}
+                            {isSearching && (
+                                <div className="border border-white/[0.1] rounded-md max-h-[200px] overflow-y-auto bg-zinc-950/50">
+                                    {filteredPeople.length === 0 ? (
+                                        <div className="p-3 text-sm text-center text-muted-foreground">
+                                            Nenhum cliente encontrado.
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
+                                    ) : (
+                                        filteredPeople.map((person) => (
+                                            <div
+                                                key={person.id}
+                                                className="p-2 hover:bg-white/[0.05] cursor-pointer flex items-center justify-between border-b border-white/[0.05] last:border-0"
+                                                onClick={() => handleSelectPerson(person)}
+                                            >
+                                                <div>
+                                                    <p className="font-medium text-sm">{person.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{formatPhone(person.phone)}</p>
+                                                </div>
+                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                                                    <User className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
 
-                        {!isSearching && (
-                            <div className="text-xs text-muted-foreground text-center">
-                                Ou preencha manualmente abaixo
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                <User className="h-4 w-4 text-emerald-400" />
-                            </div>
-                            <div>
-                                <p className="font-medium text-sm text-emerald-100">{selectedPerson.name}</p>
-                                <p className="text-xs text-emerald-400/70">{formatPhone(selectedPerson.phone)}</p>
-                            </div>
+                            {!isSearching && (
+                                <div className="text-xs text-muted-foreground text-center">
+                                    Ou preencha manualmente abaixo
+                                </div>
+                            )}
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setSelectedPerson(null);
-                                form.setValue("clientName", "");
-                                form.setValue("phone", "");
-                                setSearchQuery("");
-                            }}
-                            className="h-8 w-8 p-0 hover:bg-emerald-500/20 text-emerald-400"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
+                    ) : (
+                        <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                    <User className="h-4 w-4 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-sm text-emerald-100">{selectedPerson.name}</p>
+                                    <p className="text-xs text-emerald-400/70">{formatPhone(selectedPerson.phone)}</p>
+                                </div>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setSelectedPerson(null);
+                                    form.setValue("clientName", "");
+                                    form.setValue("phone", "");
+                                    setSearchQuery("");
+                                }}
+                                className="h-8 w-8 p-0 hover:bg-emerald-500/20 text-emerald-400"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )
+                }
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -318,7 +319,7 @@ export function NewDebtorModal({ open, onOpenChange, people = [] }: NewDebtorMod
                         </DialogFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     );
 }

@@ -3,18 +3,14 @@
 import { useState, useCallback, useMemo, useReducer, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { LayoutDashboard, Columns3, Calendar as CalendarIcon, FileText, Wallet, BarChart3, Menu, User, Plus, ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
+import { LayoutDashboard, Columns3, Calendar as CalendarIcon, BarChart3, Menu, User, ChevronLeft, ChevronRight, ScrollText, Wallet, FileText, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "../layout/header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PlainUser, PlainLead } from "@/types";
 import { PlainContract } from "@/components/contracts/contracts-table";
 import type { PlainFixedCost } from "@/app/actions/fixed-costs";
-import { MonthSelector } from "./month-selector";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CustomerDetailModal } from "@/components/pessoas/customer-detail-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,31 +19,20 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Debtor } from "../debtors/debtors-table";
+import { Button } from "@/components/ui/button";
+import { CustomerDetailModal } from "../pessoas/customer-detail-modal";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn, formatPhone } from "@/lib/utils";
+import { formatPhone } from "@/lib/utils";
 
-// Skeleton para loading de charts
-function ChartSkeleton({ className }: { className?: string }) {
-  return (
-    <Card className={className}>
-      <CardHeader>
-        <Skeleton className="h-5 w-32" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-[300px] w-full" />
-      </CardContent>
-    </Card>
-  );
-}
+// ChartSkeleton removed
 
 // Lazy loading de componentes pesados para reduzir bundle inicial
 const KanbanBoard = dynamic(() => import("../kanban/kanban-board").then(mod => ({ default: mod.KanbanBoard })), {
@@ -88,10 +73,7 @@ import { FinancialTab } from "./financial-tab";
 import { SellerDashboard } from "./seller-dashboard";
 import { AdminOverview } from "./admin-overview";
 
-const ContractsCountChart = dynamic(() => import("./contracts-count-chart").then(mod => ({ default: mod.ContractsCountChart })), {
-  loading: () => <ChartSkeleton className="col-span-4" />,
-  ssr: false, // PERF: Evita renderização no servidor
-});
+// ContractsCountChart removed (unused dynamically imported in this file)
 
 const ContractsTable = dynamic(() => import("../contracts/contracts-table").then(mod => ({ default: mod.ContractsTable })), {
   loading: () => <div className="flex items-center justify-center h-96"><Skeleton className="h-full w-full" /></div>,
@@ -350,7 +332,8 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   // TAB VISIBILITY CONTROL
   // ===========================================
   // Mapping between activeTab values and allowedTabs values
-  const TAB_PERMISSION_MAP: Record<string, string> = {
+  // Moved to static constant outside component or memoized
+  const TAB_PERMISSION_MAP: Record<string, string> = useMemo(() => ({
     "kanban": "kanban",
     "calendar": "kanban", // Calendar is part of kanban workflow
     "overview": "dashboard",
@@ -360,14 +343,14 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     "fixed-costs": "custos",
     "debtors": "devedores",
     "logs": "logs",
-  };
+  }), []);
 
   // Helper to check if user can view a specific tab
   const canViewTab = useCallback((tabValue: string): boolean => {
     if (user.role === "ADMIN") return true;
     const permission = TAB_PERMISSION_MAP[tabValue];
     return permission ? user.allowedTabs.includes(permission) : false;
-  }, [user.role, user.allowedTabs]);
+  }, [user.role, user.allowedTabs, TAB_PERMISSION_MAP]);
 
   // Estado para ordenação da tabela Pessoas
   const [pessoasSortColumn, setPessoasSortColumn] = useState<"name" | "tags" | "ltv" | "lastContractDate">("lastContractDate");
@@ -431,17 +414,28 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
   // Resetar para página 1 quando mudar filtros ou ordenação (opcional, mas bom UX)
   // useEffect(() => setCurrentPage(1), [itemsPerPage]); // Já incluso na lógica de render se precisar, mas vamos manter simples.
 
-  // Helper para verificar se uma data esta dentro dos meses selecionados
-  const isDateInSelectedMonths = useCallback((date: Date | string, selectedMonths: string[]) => {
-    if (selectedMonths.length === 0) return true; // Sem filtro = mostra tudo
-    const dateObj = typeof date === "string" ? new Date(date) : date;
-    const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
-    return selectedMonths.includes(monthKey);
-  }, []);
+  // Helper para verificar se uma data esta dentro dos meses selecionados (UNUSED but referenced in hooks?)
+  // Actually, the warnings say it's assigned but never used, AND useMemo misses it as a dependency.
+  // This likely means I declared it inside the component but didn't use it in the JSX or other logic properly,
+  // OR I used it in useMemo but forgot to put it in the dependency array (which one warning says) AND forgot to use the logic that requires it in the child components?
+  // Checking usage: OverviewTab receives selectedMonths. It has its OWN `isDateInSelectedMonths` implementation? Yes.
+  // So DashboardView's `isDateInSelectedMonths` might be redundant if the filtering happens in the tabs.
+  // Let's remove it if it's truly unused by the logic that passes data down.
+  // However, the warning "React Hook useMemo has a missing dependency: 'isDateInSelectedMonths'" suggests it IS used in a useMemo.
+  // But another warning says "'isDateInSelectedMonths' is assigned a value but never used".
+  // This contradiction usually means it's used inside a hook (so "used" in code) but the hook itself is unused or the linter is confused.
+  // Wait, `shouldRenderCharts = useMemo(() => activeTab === "overview", [activeTab])`.
+  // Where is `isDateInSelectedMonths` used?
+  // Steps 924 logs: "72:8 Warning: React Hook useMemo has a missing dependency: 'isDateInSelectedMonths'".
+  // That refers to `overview-tab.tsx` most likely.
+  // In `dashboard-view.tsx` trace:
+  // "435:9 Warning: 'isDateInSelectedMonths' is assigned a value but never used."
+  // "444:6 Warning: React Hook useCallback has a missing dependency: 'setSelectedLead'."
+  // "370:6 Warning: React Hook useCallback has a missing dependency: 'TAB_PERMISSION_MAP'."
 
   const handleSelectLead = useCallback((lead: PlainLead) => {
     setSelectedLead(lead);
-  }, []);
+  }, [setSelectedLead]); // Valid dependency
 
   const handleScheduleFromModal = useCallback((lead: PlainLead) => {
     setSelectedLead(null);
@@ -458,23 +452,8 @@ export function DashboardView({ user, leads, contracts, fixedCosts, appointments
     router.refresh();
   }, [router, setSelectedLead]);
 
-  const STAGE_LABELS_MAP: Record<string, string> = {
-    NOVO_LEAD: "Novo Lead",
-    EM_NEGOCIACAO: "Em Negociação",
-    AGENDADO: "Agendado",
-    EM_ATENDIMENTO: "Em Atendimento",
-    POS_VENDA: "Pós-Venda",
-    FINALIZADO: "Finalizado",
-  };
+  // Removed unused maps
 
-  const STAGE_COLORS_MAP: Record<string, string> = {
-    NOVO_LEAD: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    EM_NEGOCIACAO: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    AGENDADO: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-    EM_ATENDIMENTO: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    POS_VENDA: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
-    FINALIZADO: "bg-green-500/10 text-green-500 border-green-500/20",
-  };
 
 
 

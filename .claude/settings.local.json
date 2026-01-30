@@ -52,7 +52,8 @@
       "Bash(if not exist \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\webhook-logs\" mkdir \"C:\\\\Users\\\\kelwi\\\\Documents\\\\crm-for-me\\\\src\\\\components\\\\webhook-logs\")",
       "Bash(netstat:*)",
       "Bash(tasklist:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

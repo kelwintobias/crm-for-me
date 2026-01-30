@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createLeadService } from "@/app/actions/leads";
 import { prisma } from "@/lib/prisma";
 import { LeadSource } from "@prisma/client";
+import { broadcastTableChange } from "@/lib/realtime/broadcast";
 
 // Mapeamento de fontes do BotConversa para o CRM
 // Usa keywords ASCII que funcionam independente de encoding
@@ -159,35 +160,42 @@ export async function POST(req: NextRequest) {
             userId = anyUser.id;
         }
 
-        // Verificar se lead já existe pelo telefone
+        // Verificar se lead já existe pelo telefone (apenas leads ativos)
         const existingLead = await prisma.lead.findFirst({
-            where: { phone },
+            where: { phone, deletedAt: null },
         });
 
         if (existingLead) {
-            // Lead já existe - apenas move para EM_NEGOCIACAO e atualiza source
+            // Stages protegidos: não regredir leads que já avançaram no pipeline
+            const protectedStages = ["AGENDADO", "EM_ATENDIMENTO", "POS_VENDA", "FINALIZADO"];
+            const shouldUpdateStage = !protectedStages.includes(existingLead.stage);
+
+            // Lead já existe - atualiza source/nome mas NUNCA altera userId
+            // Só move para EM_NEGOCIACAO se não estiver em stage protegido
             const updatedLead = await prisma.lead.update({
                 where: { id: existingLead.id },
                 data: {
-                    stage: "EM_NEGOCIACAO",
-                    source: finalSource !== "OUTRO" ? finalSource : existingLead.source, // Só atualiza se tiver source definida
-                    name: name !== "Lead sem Nome" ? name : existingLead.name, // Atualiza nome se vier um nome válido
+                    ...(shouldUpdateStage && { stage: "EM_NEGOCIACAO" }),
+                    source: finalSource !== "OUTRO" ? finalSource : existingLead.source,
+                    name: name !== "Lead sem Nome" ? name : existingLead.name,
+                    // userId é explicitamente preservado (não incluído no update)
                 },
             });
 
-            console.log(`[WEBHOOK BOTCONVERSA] Lead movido para EM_NEGOCIACAO: ${updatedLead.id} (${updatedLead.name})`);
+            console.log(`[WEBHOOK BOTCONVERSA] Lead atualizado: ${updatedLead.id} (${updatedLead.name}) - stage: ${updatedLead.stage}${shouldUpdateStage ? " (movido para EM_NEGOCIACAO)" : " (stage preservado)"}`);
 
             // Revalidar cache para atualizar a UI
             revalidatePath("/");
+            await broadcastTableChange("leads", "update");
 
             const actionDetails = {
-                action: "LEAD_MOVED",
+                action: shouldUpdateStage ? "LEAD_MOVED" : "LEAD_UPDATED",
                 leadId: updatedLead.id,
                 leadName: updatedLead.name,
                 leadPhone: phone,
                 leadSource: updatedLead.source,
                 previousStage: existingLead.stage,
-                newStage: "EM_NEGOCIACAO",
+                newStage: updatedLead.stage,
                 receivedData: {
                     rawName: body.name || body.first_name,
                     rawPhone: body.phone || body.phone_number || body.whatsapp || body.celular,
@@ -209,10 +217,10 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json({
                 success: true,
-                action: "moved",
+                action: shouldUpdateStage ? "moved" : "updated",
                 leadId: updatedLead.id,
                 previousStage: existingLead.stage,
-                newStage: "EM_NEGOCIACAO",
+                newStage: updatedLead.stage,
                 mappedSource: updatedLead.source,
             });
         }
@@ -230,6 +238,7 @@ export async function POST(req: NextRequest) {
 
         // Revalidar cache para atualizar a UI
         revalidatePath("/");
+        await broadcastTableChange("leads", "insert");
 
         // Log Sucesso com detalhes da ação executada
         const actionDetails = {

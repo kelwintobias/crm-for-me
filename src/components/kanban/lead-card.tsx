@@ -1,11 +1,12 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle, CheckCircle2 } from "lucide-react";
-import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, PlainLead } from "@/types";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle, CheckCircle2, Flame, X } from "lucide-react";
+import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, TEMPERATURE_LABELS, TEMPERATURE_COLORS, PlainLead } from "@/types";
 import { ShoppingBag } from "lucide-react";
-import { getWhatsAppLink, formatPhone } from "@/lib/utils";
+import { getWhatsAppLink, formatPhone, toBRT } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,9 +18,11 @@ interface LeadCardProps {
   isDragging?: boolean;
   onDragStart: (lead: PlainLead, e: React.MouseEvent | React.TouchEvent) => void;
   onScheduleClick?: (lead: PlainLead) => void;
+  onTemperatureChange?: (lead: PlainLead, temperature: string | null) => void;
 }
 
-function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onScheduleClick }: LeadCardProps) {
+function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onScheduleClick, onTemperatureChange }: LeadCardProps) {
+  const [tempPopoverOpen, setTempPopoverOpen] = useState(false);
   const handleWhatsAppClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     window.open(getWhatsAppLink(lead.phone), "_blank");
@@ -103,6 +106,65 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
               </button>
             )}
 
+            {/* Botão Temperatura */}
+            {onTemperatureChange && (
+              <Popover open={tempPopoverOpen} onOpenChange={setTempPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); }}
+                    className={cn(
+                      "p-2.5 rounded-md min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors",
+                      lead.temperature
+                        ? `${TEMPERATURE_COLORS[lead.temperature].bg} ${TEMPERATURE_COLORS[lead.temperature].text}`
+                        : "bg-zinc-500/10 text-zinc-400 hover:bg-zinc-500/20"
+                    )}
+                    title="Temperatura"
+                  >
+                    <Flame className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto p-2 bg-[#1E1E1E] border-zinc-700"
+                  align="end"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex flex-col gap-1">
+                    {(["QUENTE", "MORNO", "FRIO"] as const).map((temp) => (
+                      <button
+                        key={temp}
+                        onClick={() => {
+                          onTemperatureChange(lead, temp);
+                          setTempPopoverOpen(false);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                          TEMPERATURE_COLORS[temp].bg,
+                          TEMPERATURE_COLORS[temp].text,
+                          "hover:opacity-80",
+                          lead.temperature === temp && `border ${TEMPERATURE_COLORS[temp].border}`
+                        )}
+                      >
+                        <span className={cn("w-2 h-2 rounded-full", temp === "QUENTE" ? "bg-red-400" : temp === "MORNO" ? "bg-amber-400" : "bg-blue-400")} />
+                        {TEMPERATURE_LABELS[temp]}
+                      </button>
+                    ))}
+                    {lead.temperature && (
+                      <button
+                        onClick={() => {
+                          onTemperatureChange(lead, null);
+                          setTempPopoverOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:bg-zinc-700/50 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
             {/* Botão WhatsApp */}
             <button
               onClick={handleWhatsAppClick}
@@ -119,7 +181,7 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
           <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-purple-500/10 border border-purple-500/20">
             <Calendar className="w-3.5 h-3.5 text-purple-400 shrink-0" />
             <p className="text-xs text-purple-300 font-medium">
-              {format(new Date(lead.appointmentInfo.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+              {format(toBRT(lead.appointmentInfo.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
         )}
@@ -143,6 +205,12 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
           {lead.plan !== "INDEFINIDO" && (
             <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-emerald-500/30 text-emerald-400">
               {PLAN_LABELS[lead.plan]}
+            </Badge>
+          )}
+
+          {lead.temperature && (
+            <Badge className={cn("text-[10px] h-5 px-1.5 border", TEMPERATURE_COLORS[lead.temperature].bg, TEMPERATURE_COLORS[lead.temperature].text, TEMPERATURE_COLORS[lead.temperature].border)}>
+              {TEMPERATURE_LABELS[lead.temperature]}
             </Badge>
           )}
         </div>
@@ -193,6 +261,7 @@ export const LeadCard = memo(LeadCardInner, (prev, next) => {
     prev.lead.stage === next.lead.stage &&
     prev.lead.notes === next.lead.notes &&
     prev.lead.addOns === next.lead.addOns &&
+    prev.lead.temperature === next.lead.temperature &&
     prev.lead.contractHistory?.contractCount === next.lead.contractHistory?.contractCount &&
     prev.lead.appointmentInfo?.scheduledAt === next.lead.appointmentInfo?.scheduledAt &&
     prev.lead.owner?.id === next.lead.owner?.id &&
