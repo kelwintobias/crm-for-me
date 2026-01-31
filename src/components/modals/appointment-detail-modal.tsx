@@ -43,7 +43,7 @@ import {
 } from "@/app/actions/appointments";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatPhone, toBRT } from "@/lib/utils";
+import { formatPhone, toBRT, createDateBRT } from "@/lib/utils";
 
 interface AppointmentDetailModalProps {
   appointmentId: string | null;
@@ -146,8 +146,7 @@ export function AppointmentDetailModal({
     }
 
     const [hours, minutes] = selectedTime.split(":").map(Number);
-    const scheduledAt = new Date(selectedDate);
-    scheduledAt.setHours(hours, minutes, 0, 0);
+    const scheduledAt = createDateBRT(selectedDate!, hours, minutes);
 
     setIsLoading(true);
     try {
@@ -324,7 +323,7 @@ export function AppointmentDetailModal({
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-text-primary">{entry.action}</span>
                           <span className="text-xs text-text-tertiary">
-                            {format(new Date(entry.createdAt), "dd/MM/yyyy HH:mm")}
+                            {format(toBRT(entry.createdAt), "dd/MM/yyyy HH:mm")}
                           </span>
                         </div>
                         <p className="text-xs text-text-secondary mt-1">

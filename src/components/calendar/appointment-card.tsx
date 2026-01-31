@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, User, Phone } from "lucide-react";
-import { cn, formatPhone } from "@/lib/utils";
+import { cn, formatPhone, toBRT } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -25,7 +25,7 @@ export function AppointmentCard({
   isOwner,
   onClick,
 }: AppointmentCardProps) {
-  const startTime = new Date(scheduledAt);
+  const startTime = toBRT(scheduledAt);
   const endTime = new Date(startTime.getTime() + duration * 60000);
 
   return (

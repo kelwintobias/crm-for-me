@@ -16,6 +16,7 @@ interface KanbanColumnProps {
   registerRef: (stage: PipelineStage, el: HTMLDivElement | null) => void;
   onScheduleClick?: (lead: PlainLead) => void;
   onTemperatureChange?: (lead: PlainLead, temperature: string | null) => void;
+  onReschedule?: () => void;
 }
 
 // PERF: Config estática fora do componente
@@ -69,7 +70,7 @@ const COLUMN_CONFIG: Record<PipelineStage, {
   },
 };
 
-function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef, onScheduleClick, onTemperatureChange }: KanbanColumnProps) {
+function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef, onScheduleClick, onTemperatureChange, onReschedule }: KanbanColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
   const config = COLUMN_CONFIG[stage];
 
@@ -152,6 +153,7 @@ function KanbanColumnInner({ stage, leads, onLeadClick, onDragStart, registerRef
             onDragStart={onDragStart}
             onScheduleClick={onScheduleClick}
             onTemperatureChange={onTemperatureChange}
+            onReschedule={onReschedule}
           />
         ))}
 
@@ -194,6 +196,7 @@ export const KanbanColumn = memo(KanbanColumnInner, (prevProps, nextProps) => {
   if (prevProps.onDragStart !== nextProps.onDragStart) return false;
   if (prevProps.onScheduleClick !== nextProps.onScheduleClick) return false;
   if (prevProps.onTemperatureChange !== nextProps.onTemperatureChange) return false;
+  if (prevProps.onReschedule !== nextProps.onReschedule) return false;
   if (prevProps.leads.length !== nextProps.leads.length) return false;
 
   // Compara referencia dos objetos (muito mais rapido que deep equals)

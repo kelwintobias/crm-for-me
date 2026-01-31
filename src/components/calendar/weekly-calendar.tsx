@@ -8,7 +8,7 @@ import { getWeekAppointments } from "@/app/actions/appointments";
 import { toast } from "sonner";
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, toBRT } from "@/lib/utils";
 import { useRealtimeAppointments } from "@/hooks/use-realtime-appointments";
 
 interface WeekAppointment {
@@ -31,8 +31,8 @@ interface WeeklyCalendarProps {
 export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     // Começa na segunda-feira da semana atual
-    const today = new Date();
-    return startOfWeek(today, { weekStartsOn: 1 });
+    const todayBRT = toBRT(new Date());
+    return startOfWeek(todayBRT, { weekStartsOn: 1 });
   });
 
   const [appointments, setAppointments] = useState<WeekAppointment[]>([]);
@@ -76,8 +76,8 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
   };
 
   const goToCurrentWeek = () => {
-    const today = new Date();
-    setCurrentWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
+    const todayBRT = toBRT(new Date());
+    setCurrentWeekStart(startOfWeek(todayBRT, { weekStartsOn: 1 }));
   };
 
   // Dias da semana (seg-dom - semana completa)
@@ -87,7 +87,7 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
   const appointmentsByDay = weekDays.map((day) => ({
     date: day,
     appointments: appointments.filter((apt) =>
-      isSameDay(new Date(apt.scheduledAt), day)
+      isSameDay(toBRT(apt.scheduledAt), day)
     ),
   }));
 
@@ -143,7 +143,7 @@ export function WeeklyCalendar({ onAppointmentClick }: WeeklyCalendarProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3 overflow-x-auto">
           {appointmentsByDay.map(({ date, appointments: dayAppointments }) => {
-            const isToday = isSameDay(date, new Date());
+            const isToday = isSameDay(date, toBRT(new Date()));
             const isWeekendDay = isWeekend(date);
 
             return (

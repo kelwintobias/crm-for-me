@@ -212,6 +212,11 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     }
   }, []);
 
+  // Handler para refresh após remarcação
+  const handleReschedule = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
   // PERF: Registra ref de coluna
   const registerColumnRef = useCallback((stage: PipelineStage, el: HTMLDivElement | null) => {
     if (el) {
@@ -444,6 +449,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
             registerRef={registerColumnRef}
             onScheduleClick={handleScheduleClick}
             onTemperatureChange={handleTemperatureChange}
+            onReschedule={handleReschedule}
           />
         ))}
       </div>

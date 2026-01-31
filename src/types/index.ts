@@ -36,6 +36,7 @@ export interface LeadContractHistory {
 }
 
 export interface LeadAppointmentInfo {
+  appointmentId: string;
   scheduledAt: string;
   duration: number;
 }
@@ -162,8 +163,8 @@ export const TEMPERATURE_LABELS: Record<string, string> = {
 
 export const TEMPERATURE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   QUENTE: { bg: "bg-red-500/15", text: "text-red-400", border: "border-red-500/30" },
-  MORNO:  { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/30" },
-  FRIO:   { bg: "bg-blue-500/15", text: "text-blue-400", border: "border-blue-500/30" },
+  MORNO: { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/30" },
+  FRIO: { bg: "bg-blue-500/15", text: "text-blue-400", border: "border-blue-500/30" },
 };
 
 // Cores dos stages para UI

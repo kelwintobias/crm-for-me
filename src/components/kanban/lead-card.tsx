@@ -3,13 +3,18 @@
 import { memo, useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle, CheckCircle2, Flame, X } from "lucide-react";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { MessageCircle, GripVertical, Calendar, CalendarPlus, UserCircle, CheckCircle2, Flame, X, Clock, Loader2 } from "lucide-react";
 import { SOURCE_LABELS, SOURCE_BADGE_VARIANTS, PLAN_LABELS, TEMPERATURE_LABELS, TEMPERATURE_COLORS, PlainLead } from "@/types";
 import { ShoppingBag } from "lucide-react";
-import { getWhatsAppLink, formatPhone, toBRT } from "@/lib/utils";
+import { getWhatsAppLink, formatPhone, toBRT, createDateBRT } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { rescheduleAppointment } from "@/app/actions/appointments";
+import { toast } from "sonner";
 
 interface LeadCardProps {
   lead: PlainLead;
@@ -19,10 +24,16 @@ interface LeadCardProps {
   onDragStart: (lead: PlainLead, e: React.MouseEvent | React.TouchEvent) => void;
   onScheduleClick?: (lead: PlainLead) => void;
   onTemperatureChange?: (lead: PlainLead, temperature: string | null) => void;
+  onReschedule?: () => void;
 }
 
-function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onScheduleClick, onTemperatureChange }: LeadCardProps) {
+function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onScheduleClick, onTemperatureChange, onReschedule }: LeadCardProps) {
   const [tempPopoverOpen, setTempPopoverOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>();
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   const handleWhatsAppClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     window.open(getWhatsAppLink(lead.phone), "_blank");
@@ -34,6 +45,43 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
       onScheduleClick(lead);
     }
   }, [lead, onScheduleClick]);
+
+  // Handler para abrir popover de remarcação
+  const handleOpenReschedule = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (lead.appointmentInfo) {
+      const brtDate = toBRT(lead.appointmentInfo.scheduledAt);
+      setRescheduleDate(brtDate);
+      setRescheduleTime(format(brtDate, "HH:mm"));
+    }
+    setRescheduleOpen(true);
+  }, [lead.appointmentInfo]);
+
+  // Handler de confirmação de remarcação
+  const handleConfirmReschedule = useCallback(async () => {
+    if (!lead.appointmentInfo || !rescheduleDate || !rescheduleTime) return;
+    const [hours, minutes] = rescheduleTime.split(":").map(Number);
+    const scheduledAt = createDateBRT(rescheduleDate, hours, minutes);
+
+    setIsRescheduling(true);
+    try {
+      const result = await rescheduleAppointment({
+        id: lead.appointmentInfo.appointmentId,
+        scheduledAt: scheduledAt.toISOString(),
+      });
+      if (result.success) {
+        toast.success("Horário atualizado!");
+        onReschedule?.();
+        setRescheduleOpen(false);
+      } else {
+        toast.error(result.error || "Erro ao remarcar");
+      }
+    } catch {
+      toast.error("Erro ao remarcar agendamento");
+    } finally {
+      setIsRescheduling(false);
+    }
+  }, [lead.appointmentInfo, rescheduleDate, rescheduleTime, onReschedule]);
 
   // Mostra botão agendar para leads que não estão em AGENDADO ou FINALIZADO
   const showScheduleButton = !["AGENDADO", "FINALIZADO", "PERDIDO"].includes(lead.stage) && onScheduleClick;
@@ -176,14 +224,78 @@ function LeadCardInner({ lead, onClick, isOverlay, isDragging, onDragStart, onSc
           </div>
         </div>
 
-        {/* Agendamento - exibe quando tem appointmentInfo */}
+        {/* Agendamento - exibe quando tem appointmentInfo com Popover para edição */}
         {lead.appointmentInfo && (
-          <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-purple-500/10 border border-purple-500/20">
-            <Calendar className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-            <p className="text-xs text-purple-300 font-medium">
-              {format(toBRT(lead.appointmentInfo.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
-            </p>
-          </div>
+          <Popover open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+            <PopoverTrigger asChild>
+              <button
+                onClick={handleOpenReschedule}
+                className="flex items-center gap-2 mt-2 p-2 rounded-md bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer w-full"
+              >
+                <Calendar className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <p className="text-xs text-purple-300 font-medium">
+                  {format(toBRT(lead.appointmentInfo.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-4 bg-[#1E1E1E] border-zinc-700"
+              align="start"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-zinc-400">Data</label>
+                  <CalendarUI
+                    mode="single"
+                    selected={rescheduleDate}
+                    onSelect={setRescheduleDate}
+                    className="rounded-md border border-zinc-700"
+                  />
+                </div>
+                {rescheduleDate && (
+                  <div className="space-y-2">
+                    <label htmlFor="reschedule-time" className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+                      <Clock className="w-3 h-3" />
+                      Horário
+                    </label>
+                    <Input
+                      id="reschedule-time"
+                      type="time"
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRescheduleOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleConfirmReschedule}
+                    disabled={!rescheduleDate || !rescheduleTime || isRescheduling}
+                    className="flex-1"
+                  >
+                    {isRescheduling ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      "Confirmar"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Data de finalização */}

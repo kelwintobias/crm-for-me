@@ -316,11 +316,8 @@ export async function getWeekAppointments(startDate: string) {
     // Nota: Auth é validada pelo middleware antes da página carregar
     // Dados são compartilhados entre todos os usuários
 
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
+    const start = new Date(startDate + "T00:00:00-03:00");
+    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     const appointments = await prisma.appointment.findMany({
       where: {
@@ -456,6 +453,7 @@ export async function getScheduledAppointmentsByLeadIds(leadIds: string[]) {
         status: "SCHEDULED",
       },
       select: {
+        id: true,
         leadId: true,
         scheduledAt: true,
         duration: true,
@@ -464,11 +462,12 @@ export async function getScheduledAppointmentsByLeadIds(leadIds: string[]) {
     });
 
     // Retorna Map para O(1) lookup
-    const appointmentMap = new Map<string, { scheduledAt: string; duration: number }>();
+    const appointmentMap = new Map<string, { appointmentId: string; scheduledAt: string; duration: number }>();
     for (const apt of appointments) {
       // Só guarda o primeiro (mais próximo) se já existir
       if (!appointmentMap.has(apt.leadId)) {
         appointmentMap.set(apt.leadId, {
+          appointmentId: apt.id,
           scheduledAt: apt.scheduledAt.toISOString(),
           duration: apt.duration,
         });

@@ -94,6 +94,7 @@ export default async function HomePage() {
       }),
       ...(appointmentInfo && {
         appointmentInfo: {
+          appointmentId: appointmentInfo.appointmentId,
           scheduledAt: appointmentInfo.scheduledAt,
           duration: appointmentInfo.duration,
         },
